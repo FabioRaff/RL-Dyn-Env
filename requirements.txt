@@ -1,0 +1,5 @@
+numpy==1.21.6
+gymnasium==0.27.1
+mujoco==2.3.2
+tensorflow==2.11.0
+pynput==1.7.6
