@@ -156,12 +156,12 @@ class RandDynObstEnv(gym.Env, EzPickle):
             obj_range=0.1,
             target_range=0.1,
             num_obst=3,
-            obj_goal_dist_threshold=0.05,
+            obj_goal_dist_threshold=0.03,
             obj_gripper_dist_threshold=0.02,
             max_vel=0.4,
             obj_lost_reward=-0.2,
             collision_reward=-1.,
-            scenario='',
+            scenario=None,
             **kwargs
     ):
         """Initialize the hand and fetch robot superclass.
@@ -317,7 +317,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
         self._mujoco.mj_step(self.model, self.data, nstep=self.n_substeps)
 
         obs = self._get_obs()
-        self.col_sum += obs['collision']
+        # self.col_sum += obs['collision']
 
         reward = self.compute_reward(obs["achieved_goal"], self.goal, obs['object_gripper_dist'], obs['collision'])
         self.reward_sum += reward
@@ -394,8 +394,10 @@ class RandDynObstEnv(gym.Env, EzPickle):
             contact = self.data.contact[i]
 
             for obst_id in self.obstacle_ids:
-                if (contact.geom1 == obst_id) or (contact.geom2 == obst_id):
-                    return 1
+                # skip table contacts (table_id = 87)
+                if contact.geom1 != 87 and contact.geom2 != 87:
+                    if (contact.geom1 == obst_id) or (contact.geom2 == obst_id):
+                        return 1
         return 0
 
     # getter for hgg
@@ -440,7 +442,8 @@ class RandDynObstEnv(gym.Env, EzPickle):
         achieved_goal = np.squeeze(object_pos.copy())
 
         # collisions
-        collision = self._check_collisions()
+        self.col_sum += self._check_collisions()
+        # collision = self._check_collisions()
 
         obs = np.concatenate(
             [
@@ -462,10 +465,17 @@ class RandDynObstEnv(gym.Env, EzPickle):
             "achieved_goal": achieved_goal.copy(),
             "desired_goal": self.goal.copy(),
             "object_gripper_dist": object_gripper_dist.copy(),
-            "collision": collision,
+            "collision": self.col_sum,
         }
 
     def compute_reward(self, achieved_goal, desired_goal, object_gripper_dist, collision):
+        # single reward
+        # rew = 0
+        # if not self._is_success(achieved_goal, desired_goal) \
+        #     or object_gripper_dist > self.obj_gripper_dist_threshold \
+        #     or collision:
+        #     rew = -1
+        # print(rew, self.col_sum)
         # Compute distance between goal and the achieved goal.
         rew = self._is_success(achieved_goal, desired_goal) - 1
         # object lost reward
@@ -580,7 +590,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
             self._utils.set_joint_qpos(self.model, self.data, "object0:joint", object_qpos)
             # ensure that the robot has space to grab the object
             obj_safe_size = self.get_geom_size('object0').copy()
-            obj_safe_size += [0.01, 0.08, 0.18]
+            obj_safe_size += [0.05, 0.1, 0.2]
             paths.append({'pos': object_qpos[:3], 'size': obj_safe_size})
 
             # Sample goal
