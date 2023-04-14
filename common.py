@@ -49,9 +49,9 @@ def get_args():
     parser.add_argument('--polyak', help='interpolation factor in polyak averaging for DDPG', type=np.float32, default=0.95)
 
     # RL Architecture
-    parser.add_argument('--actor_layer_sizes', help='number of hidden layers and neurons for actor', type=np.float32, default=[512, 512, 256])
+    parser.add_argument('--actor_layer_sizes', help='number of hidden layers and neurons for actor', type=np.float32, default=[512, 256, 128])
     parser.add_argument('--actor_batch_norm', help='apply batch normalization after each hidden layer for actor', type=np.float32, default=[False]*3)
-    parser.add_argument('--critic_layer_sizes', help='number of hidden layers and neurons for critic', type=np.float32, default=[512, 512, 256])
+    parser.add_argument('--critic_layer_sizes', help='number of hidden layers and neurons for critic', type=np.float32, default=[512, 256, 128])
     parser.add_argument('--critic_batch_norm', help='apply batch normalization after each hidden layer for critic', type=np.float32, default=[False]*3)
 
     # Rewards

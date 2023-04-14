@@ -168,8 +168,8 @@ class ReplayBuffer_Episodic:
 				rew = self.args.compute_reward(
 					achieved,
 					goal,
-					self.buffer['obs'][idx][step]['object_gripper_dist'],
-					self.buffer['obs'][idx][step]['collision']
+					self.buffer['obs'][idx][step+1]['object_gripper_dist'],
+					self.buffer['obs'][idx][step+1]['collision']
 				)
 				# # # nstep reward
 				# n_steps = np.min([self.args.timesteps - step, 3])

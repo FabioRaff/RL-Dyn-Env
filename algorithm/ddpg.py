@@ -98,6 +98,9 @@ class DDPG(tf.Module):
 		"""
 		Initialize the DDPG model with the given parameters.
 		"""
+		# gpu = tf.config.list_physical_devices('GPU')[0]
+		# tf.config.experimental.set_memory_growth(gpu, True)
+
 		# Actor Architecture
 		actor_arch = {
 			'input_shape': args.obs_dims[0],

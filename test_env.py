@@ -36,13 +36,13 @@ def test_env():
             pass
         env.step(action)
         env.render()
-
-    while True:
-        st = time.time()
-        env.unwrapped.num_obst = np.random.randint(4)
-        env.reset()
-        env.render()
-        time.sleep(0.5)
+    #
+    # while True:
+    #     st = time.time()
+    #     env.unwrapped.num_obst = 3
+    #     env.reset()
+    #     env.render()
+    #     time.sleep(0.)
         # for i in range(10):
         #     env.step([0., 0., 0., 0.])
         #     env.render()
