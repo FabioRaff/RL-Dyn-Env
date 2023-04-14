@@ -633,6 +633,11 @@ class RandDynObstEnv(gym.Env, EzPickle):
                 # random velocity in d direction
                 vel = np.zeros(6)
                 vel[d] = self.np_random.uniform(-self.max_vel, self.max_vel)
+                # give object a 20% chance to be static of same size of table
+                if self.np_random.uniform() <= 0.2:
+                    vel = np.zeros(6)
+                    pos[d] = site_pos[d]
+                    size[d] = site_size[d]
             self._utils.set_joint_qpos(self.model, self.data, f"obstacle{obst}:joint", pos)
             self._utils.set_joint_qvel(self.model, self.data, f"obstacle{obst}:joint", vel)
             self.set_geom_size(f'obstacle{obst}', size)

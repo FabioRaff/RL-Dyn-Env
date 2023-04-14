@@ -2,6 +2,7 @@ import gymnasium as gym
 from envs.config import register_custom_envs
 from pynput import keyboard
 import time
+import numpy as np
 
 
 def test_env():
@@ -36,15 +37,17 @@ def test_env():
         env.step(action)
         env.render()
 
-    # while True:
-    #     st = time.time()
-    #     env.unwrapped.num_obst = np.random.randint(4)
-    #     env.reset()
-    #     for i in range(10):
-    #         env.step([0., 0., 0., 0.])
-    #         env.render()
-    #         time.sleep(0.1)
-    #     print('Time:', time.time()-st)
+    while True:
+        st = time.time()
+        env.unwrapped.num_obst = np.random.randint(4)
+        env.reset()
+        env.render()
+        time.sleep(0.5)
+        # for i in range(10):
+        #     env.step([0., 0., 0., 0.])
+        #     env.render()
+        #     time.sleep(0.1)
+        # print('Time:', time.time()-st)
 
     # Collect events until released
     with keyboard.Listener(on_press=on_press) as listener:
