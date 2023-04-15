@@ -29,3 +29,17 @@ def quaternion_to_euler_angle(array):
 	Z = math.atan2(t3, t4)
 	result = np.array([X, Y, Z])
 	return result
+
+
+def euler_to_quaternion_angle(array):
+	X = array[0]
+	Y = array[1]
+	Z = array[2]
+
+	w = np.cos(X / 2) * np.cos(Y / 2) * np.cos(Z / 2) + np.sin(X / 2) * np.sin(Y / 2) * np.sin(Z / 2)
+	x = np.sin(X / 2) * np.cos(Y / 2) * np.cos(Z / 2) - np.cos(X / 2) * np.sin(Y / 2) * np.sin(Z / 2)
+	y = np.cos(X / 2) * np.sin(Y / 2) * np.cos(Z / 2) + np.sin(X / 2) * np.cos(Y / 2) * np.sin(Z / 2)
+	z = np.cos(X / 2) * np.cos(Y / 2) * np.sin(Z / 2) - np.sin(X / 2) * np.sin(Y / 2) * np.cos(Z / 2)
+
+	result = np.array([w, x, y, z])
+	return result

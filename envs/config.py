@@ -17,6 +17,7 @@ def register_custom_envs():
 def make_env(args):
     return gym.make(
         args.env,
+        control_mode=args.control_mode,
         n_substeps=args.env_n_substeps,
         obj_lost_reward=args.obj_lost_reward,
         collision_reward=args.collision_reward,
@@ -25,6 +26,7 @@ def make_env(args):
 def make_vector_env(args):
     return gym.vector.make(
         args.env,
+        control_mode=args.control_mode,
         n_substeps=args.env_n_substeps,
         num_envs=args.num_envs,
         obj_lost_reward=args.obj_lost_reward,

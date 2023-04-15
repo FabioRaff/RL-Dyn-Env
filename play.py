@@ -13,7 +13,7 @@ class Player:
         self.args = args
 
         self.info = []
-        self.test_rollouts = 20
+        self.test_rollouts = 200
 
         self.agent = create_agent(args)
         self.agent.load(os.path.join(args.model_path, "saved_policy-{}".format(args.play_epoch)))
@@ -41,8 +41,8 @@ class Player:
                 action = self.agent.step(obs)
                 obs, _, _, _, info = env.step(action)
 
-                env.render()
-                time.sleep(0.1)
+                # env.render()
+                # time.sleep(0.1)
                 if info['Success']:
                     acc_sum += 1
                     col_sum += info['Collisions']

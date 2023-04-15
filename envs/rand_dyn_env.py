@@ -12,7 +12,7 @@ from gymnasium.utils.ezpickle import EzPickle
 from gymnasium_robotics.utils import mujoco_utils
 from gymnasium_robotics.utils import rotations
 
-MODEL_XML_PATH = os.path.join("assets", "rand_dyn_obst.xml")
+from envs.utils import euler_to_quaternion_angle
 
 DEFAULT_CAMERA_CONFIG = {
     "distance": 1,
@@ -152,7 +152,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
     def __init__(
             self,
             n_substeps=20,
-            block_eef_rot=True,
+            control_mode='position',
             obj_range=0.1,
             target_range=0.1,
             num_obst=3,
@@ -179,13 +179,11 @@ class RandDynObstEnv(gym.Env, EzPickle):
         self._mujoco = mujoco
         self._utils = mujoco_utils
 
-        self.model_path = MODEL_XML_PATH
-        self.model_path = MODEL_XML_PATH
-
-        if self.model_path.startswith("/"):
-            self.fullpath = self.model_path
+        if control_mode in ['position', 'position_rotation']:
+            self.fullpath = os.path.join(os.path.dirname(__file__), "assets", "rand_dyn_obst.xml")
         else:
-            self.fullpath = os.path.join(os.path.dirname(__file__), self.model_path)
+            self.fullpath = os.path.join(os.path.dirname(__file__), "assets", "rand_dyn_obst_torque_ctrl.xml")
+
         if not os.path.exists(self.fullpath):
             raise OSError(f"File {self.fullpath} does not exist")
 
@@ -193,7 +191,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
         self.total_obst = 3
 
         self.n_substeps = n_substeps
-        self.block_eef_rot = block_eef_rot
+        self.control_mode = control_mode
         self.obj_range = obj_range
         self.target_range = target_range
         self.num_obst = num_obst
@@ -206,19 +204,28 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
         self.initial_qpos = {
             'object0:joint': [1.25, 0.53, 0.4, 1., 0., 0., 0.],
-            'robot:joint1': 0,
-            'robot:joint2': 0,
-            'robot:joint3': 0,
-            'robot:joint4': -1.57,
-            'robot:joint5': 0,
-            'robot:joint6': 1.57,
-            'robot:joint7': 0,
+            'robot:joint1': 0.0254,
+            'robot:joint2': -0.2188,
+            'robot:joint3': -0.0265,
+            'robot:joint4': -2.6851,
+            'robot:joint5': -0.0092,
+            'robot:joint6': 2.4664,
+            'robot:joint7': 0.0068,
         }
 
         self.goal = np.zeros(0)
         self.obstacles = []
         self.reward_sum = 0
         self.col_sum = 0
+
+        if self.control_mode == 'position':
+            self.n_actions = 4
+        elif self.control_mode == 'position_rotation':
+            self.n_actions = 7
+        elif self.control_mode == 'torque':
+            self.n_actions = 8
+        else:
+            raise ValueError("Control mode should be one of the following: ['position', 'position_rotation', 'torque']")
 
         self._initialize_simulation()
 
@@ -228,7 +235,6 @@ class RandDynObstEnv(gym.Env, EzPickle):
                 int(np.round(1.0 / self.dt)) == self.metadata["render_fps"]
         ), f'Expected value: {int(np.round(1.0 / self.dt))}, Actual value: {self.metadata["render_fps"]}'
 
-        self.n_actions = 4 if self.block_eef_rot else 7
         self.action_space = spaces.Box(-1.0, 1.0, shape=(self.n_actions,), dtype=np.float32)
         self.observation_space = spaces.Dict(
             dict(
@@ -265,19 +271,9 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
         for name, value in self.initial_qpos.items():
             self._utils.set_joint_qpos(self.model, self.data, name, value)
+
         self._utils.reset_mocap_welds(self.model, self.data)
         self._mujoco.mj_forward(self.model, self.data)
-
-        # Move end effector into position.
-        gripper_target = np.array([-0.15, 0, -0.32]) + self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
-        # gripper_target = np.array([1.35, 0.75, 1 + self.gripper_extra_height])
-        gripper_rotation = np.array([1., 1., 0., 0.])
-        self._utils.set_mocap_pos(self.model, self.data, "robot0:mocap", gripper_target)
-        self._utils.set_mocap_quat(self.model, self.data, "robot0:mocap", gripper_rotation)
-        for _ in range(10):
-            self._mujoco.mj_step(self.model, self.data, nstep=self.n_substeps)
-        # Extract information for sampling goals.
-        self.initial_gripper_xpos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
 
         self.initial_time = self.data.time
         self.initial_qpos = np.copy(self.data.qpos)
@@ -317,7 +313,6 @@ class RandDynObstEnv(gym.Env, EzPickle):
         self._mujoco.mj_step(self.model, self.data, nstep=self.n_substeps)
 
         obs = self._get_obs()
-        # self.col_sum += obs['collision']
 
         reward = self.compute_reward(obs["achieved_goal"], self.goal, obs['object_gripper_dist'], obs['collision'])
         self.reward_sum += reward
@@ -355,25 +350,25 @@ class RandDynObstEnv(gym.Env, EzPickle):
         # ensure that we don't change the action outside of this scope
         action = action.copy()
 
-        if self.block_eef_rot:
-            pos_ctrl, gripper_ctrl = action[:3], action[3]
-            rot_ctrl = [1.0, 0.0, 0.0, 0.0]  # fixed rotation of the end effector, expressed as a quaternion
+        if self.control_mode != 'torque':
+            if self.control_mode == 'position':
+                pos_ctrl, gripper_ctrl = action[:3], action[3]
+                rot_ctrl = [1.0, 0.0, 0.0, 0.0]  # fixed rotation of the end effector, expressed as a quaternion
+            else:
+                pos_ctrl, rot_ctrl, gripper_ctrl = action[:3], action[3:6], action[6]
+                # rot_ctrl *= 0.1  # limit maximum rotation
+                rot_ctrl = euler_to_quaternion_angle(rot_ctrl)
+
+            pos_ctrl *= 0.05  # limit maximum change in position
+            # normalize gripper ctrl
+            gripper_ctrl = [self.actuation_center[-1] + gripper_ctrl * self.actuation_range[-1]]
+            action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
+            # Apply action to simulation.
+            self._utils.mocap_set_action(self.model, self.data, action)
+            self.data.ctrl = gripper_ctrl
         else:
-            pos_ctrl, rot_ctrl, gripper_ctrl = action[:3], action[3:6], action[6]
-            rot_ctrl *= 0.1  # limit maximum rotation
-
-        pos_ctrl *= 0.05  # limit maximum change in position
-
-        # normalize gripper ctrl
-        gripper_ctrl = [self.actuation_center[-1] + gripper_ctrl * self.actuation_range[-1]]
-
-        action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
-
-        # Apply action to simulation.
-        self._utils.mocap_set_action(self.model, self.data, action)
-        self.data.ctrl = gripper_ctrl
-        # self.data.ctrl[1] = 1
-        # self._utils.ctrl_set_action(self.model, self.data, action)
+            action[-1] = self.actuation_center[-1] + action[-1] * self.actuation_range[-1]
+            self._utils.ctrl_set_action(self.model, self.data, action)
 
     def _move_obstacles(self):
         for obst in self.obstacles:
@@ -469,13 +464,6 @@ class RandDynObstEnv(gym.Env, EzPickle):
         }
 
     def compute_reward(self, achieved_goal, desired_goal, object_gripper_dist, collision):
-        # single reward
-        # rew = 0
-        # if not self._is_success(achieved_goal, desired_goal) \
-        #     or object_gripper_dist > self.obj_gripper_dist_threshold \
-        #     or collision:
-        #     rew = -1
-        # print(rew, self.col_sum)
         # Compute distance between goal and the achieved goal.
         rew = self._is_success(achieved_goal, desired_goal) - 1
         # object lost reward
@@ -605,7 +593,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
             self.goal = goal.copy()
             # ensure that the robot has space to reach goal
             target_safe_size = self.get_geom_size('target0').copy()
-            target_safe_size += [0.02, 0.08, 0.2]
+            target_safe_size += [0.05, 0.1, 0.2]
             paths.append({'pos': goal, 'size': target_safe_size})
 
             self._randomize_obstacles(max_pos, min_pos, paths)
