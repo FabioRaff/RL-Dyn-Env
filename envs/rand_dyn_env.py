@@ -12,7 +12,8 @@ from gymnasium.utils.ezpickle import EzPickle
 from gymnasium_robotics.utils import mujoco_utils
 from gymnasium_robotics.utils import rotations
 
-from envs.utils import euler_to_quaternion_angle
+from envs.utils import eul2quat
+from envs.ik_controller import IKController
 
 DEFAULT_CAMERA_CONFIG = {
     "distance": 1,
@@ -158,7 +159,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
             num_obst=3,
             obj_goal_dist_threshold=0.03,
             obj_gripper_dist_threshold=0.02,
-            max_vel=0.4,
+            max_vel=0.1,
             obj_lost_reward=-0.2,
             collision_reward=-1.,
             scenario=None,
@@ -218,7 +219,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
         self.reward_sum = 0
         self.col_sum = 0
 
-        if self.control_mode == 'position':
+        if self.control_mode == 'position' or self.control_mode == 'ik_controller':
             self.n_actions = 4
         elif self.control_mode == 'position_rotation':
             self.n_actions = 7
@@ -231,9 +232,9 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
         obs = self._get_obs()
 
-        assert (
-                int(np.round(1.0 / self.dt)) == self.metadata["render_fps"]
-        ), f'Expected value: {int(np.round(1.0 / self.dt))}, Actual value: {self.metadata["render_fps"]}'
+        # assert (
+        #         int(np.round(1.0 / self.dt)) == self.metadata["render_fps"]
+        # ), f'Expected value: {int(np.round(1.0 / self.dt))}, Actual value: {self.metadata["render_fps"]}'
 
         self.action_space = spaces.Box(-1.0, 1.0, shape=(self.n_actions,), dtype=np.float32)
         self.observation_space = spaces.Dict(
@@ -253,6 +254,10 @@ class RandDynObstEnv(gym.Env, EzPickle):
                 collision=spaces.Discrete(2),
             )
         )
+
+        # IK controller
+        self.IKC = IKController(self.get_body_pos("link0"), self.data.qpos[:7], self.get_obstacle_info())
+        self.target_grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
 
         self.render_mode = 'human'
         self.mujoco_renderer = MujocoRenderer(
@@ -308,11 +313,56 @@ class RandDynObstEnv(gym.Env, EzPickle):
             raise ValueError("Action dimension mismatch")
 
         action = np.clip(action, -1, 1)
-        self._set_action(action)
+
+        if self.control_mode=='ik_controller':
+            ##########################
+            # get obstacle information
+            obstacles = self.get_obstacle_info()
+            # compute target position
+            grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
+            target_pos = (grip_pos + np.clip(action[:3], -1, 1) * 0.05).copy()
+            self.target_grip_pos += action[:3] * 0.05
+            self.set_site_pos("target_pos", target_pos)
+
+            qpos = self.data.qpos[:7].copy()
+
+            # self._set_action(action)
+            # self._mujoco.mj_step(self.model, self.data, nstep=1000)
+            mocap_sol = self.data.qpos[:7]
+            # 1.2125068458259467,0.7575255189080952,0.6111255208249269
+
+            # calculate forward kinematics and capsule positions for visualization
+            q_res, robot_capsules, obst_capsules = self.IKC.solve(qpos, obstacles, target_pos) #, grip_pos, mocap_sol)
+
+            for i, caps in enumerate(robot_capsules + obst_capsules):
+                pos = (caps['u'] + caps['p']) / 2
+                size = np.array([caps['roh'], np.linalg.norm((caps['u'] - caps['p']) / 2), 0.005])
+                quat = np.empty((4,))
+                mujoco.mju_quatZ2Vec(quat, caps['u'] - caps['p'])
+
+                self.set_site_pos("capsule" + str(i + 1), pos)
+                self.set_site_size("capsule" + str(i + 1), size)
+                self.set_site_quat("capsule" + str(i + 1), quat)
+
+            angle_error = 0.001 * np.linalg.norm(qpos - q_res)
+            ######################
+            self._set_action(np.append(q_res, action[3]))
+        else:
+            self._set_action(action)
         self._move_obstacles()
+
+        # self._mujoco.mj_step(self.model, self.data, nstep=1)
+        # self.render()
+
+        # forward simu
         self._mujoco.mj_step(self.model, self.data, nstep=self.n_substeps)
 
         obs = self._get_obs()
+
+        # t_real_pos = self.data.qpos[:7]
+        # t_calc_pos = [fk[:3,3] for fk in fk_list]
+        # t1 = self.data.qpos[16:19]
+        # t2 = self.obstacles[0]['pos'][:3]
 
         reward = self.compute_reward(obs["achieved_goal"], self.goal, obs['object_gripper_dist'], obs['collision'])
         self.reward_sum += reward
@@ -330,11 +380,10 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
     def render(self):
         """Render a frame of the MuJoCo simulation."""
-        # Visualize target.
+        # visualize target.
         sites_offset = (self.data.site_xpos - self.model.site_pos).copy()
         site_id = self._mujoco.mj_name2id(self.model, self._mujoco.mjtObj.mjOBJ_SITE, "target0")
         self.model.site_pos[site_id] = self.goal - sites_offset[0]
-        self._mujoco.mj_forward(self.model, self.data)
 
         return self.mujoco_renderer.render(self.render_mode)
 
@@ -350,14 +399,14 @@ class RandDynObstEnv(gym.Env, EzPickle):
         # ensure that we don't change the action outside of this scope
         action = action.copy()
 
-        if self.control_mode != 'torque':
+        if self.control_mode.startswith('pos'):
             if self.control_mode == 'position':
                 pos_ctrl, gripper_ctrl = action[:3], action[3]
                 rot_ctrl = [1.0, 0.0, 0.0, 0.0]  # fixed rotation of the end effector, expressed as a quaternion
             else:
                 pos_ctrl, rot_ctrl, gripper_ctrl = action[:3], action[3:6], action[6]
                 # rot_ctrl *= 0.1  # limit maximum rotation
-                rot_ctrl = euler_to_quaternion_angle(rot_ctrl)
+                rot_ctrl = eul2quat(rot_ctrl)
 
             pos_ctrl *= 0.05  # limit maximum change in position
             # normalize gripper ctrl
@@ -368,30 +417,38 @@ class RandDynObstEnv(gym.Env, EzPickle):
             self.data.ctrl = gripper_ctrl
         else:
             action[-1] = self.actuation_center[-1] + action[-1] * self.actuation_range[-1]
-            self._utils.ctrl_set_action(self.model, self.data, action)
+            self.data.ctrl = action
 
     def _move_obstacles(self):
         for obst in self.obstacles:
             margin = self.dt * self.max_vel
             pos = self._utils.get_joint_qpos(self.model, self.data, obst['name'] + ':joint')
             d = obst['direction']
-            # new pos (this is to ensure that obstacles stay on their path, even if a collision happens)
+            # this is to ensure that obstacles stay on their path, even if a collision happen
+            # self._utils.set_joint_qpos(self.model, self.data, obst['name'] + ':joint', obst['pos'])
             obst['pos'][d] += obst['vel'][d]*self.dt
             # flip direction
-            if (pos[d] - obst['size'][d] - margin) < obst['l_bound'][d] or (pos[d] + obst['size'][d] + margin) > obst['r_bound'][d]:
-                obst['vel'] = -obst['vel']
+            if (pos[d] - obst['size'][d]) <= obst['l_bound'][d] + margin:
+                obst['vel'] = abs(obst['vel'])
+            elif (pos[d] + obst['size'][d]) >= obst['r_bound'][d] - margin:
+                obst['vel'] = -1 * abs(obst['vel'])
             # adjust
-            self._utils.set_joint_qpos(self.model, self.data, obst['name'] + ':joint', obst['pos'])
             self._utils.set_joint_qvel(self.model, self.data, obst['name'] + ':joint', obst['vel'])
 
     def _check_collisions(self):
         for i in range(self.data.ncon):
+
             contact = self.data.contact[i]
+            if contact.exclude > 0:
+                continue
 
             for obst_id in self.obstacle_ids:
-                # skip table contacts (table_id = 87)
-                if contact.geom1 != 87 and contact.geom2 != 87:
+                # skip table contacts
+                table_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, 'table0')
+                panda_table_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, 'panda_table')
+                if contact.geom1 not in [table_id, panda_table_id] and contact.geom2 not in [table_id, panda_table_id]:
                     if (contact.geom1 == obst_id) or (contact.geom2 == obst_id):
+                        # print('COL!')
                         return 1
         return 0
 
@@ -400,22 +457,16 @@ class RandDynObstEnv(gym.Env, EzPickle):
         return self._get_obs()
 
     def _get_obs(self):
-        dt = self.n_substeps * self.model.opt.timestep
         # robot
         robot_qpos, robot_qvel = self._utils.robot_get_obs(self.model, self.data, self._model_names.joint_names)
 
         # gripper
         grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
-        grip_velp = (self._utils.get_site_xvelp(self.model, self.data, "robot0:grip") * dt)
-        gripper_vel = (robot_qvel[-2:] * dt)
-        gripper_state = robot_qpos[-2:]
+        grip_velp = self._utils.get_site_xvelp(self.model, self.data, "robot0:grip")
 
         # object
         object_pos = self._utils.get_site_xpos(self.model, self.data, "object0")
-        object_rot = rotations.mat2euler(self._utils.get_site_xmat(self.model, self.data, "object0"))
-        object_velp = (self._utils.get_site_xvelp(self.model, self.data, "object0") * dt)
-        object_velp -= grip_velp
-        object_velr = (self._utils.get_site_xvelr(self.model, self.data, "object0") * dt)
+        object_velp = self._utils.get_site_xvelp(self.model, self.data, "object0")
 
         # object-gripper
         object_rel_pos = object_pos - grip_pos
@@ -429,7 +480,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
             size = self.get_geom_size(f'obstacle{n}')
             obstacles.append(np.concatenate([pos, vel, size]))
         if not self.scenario:
-            # randomize order to avoid overfitting to the first obstacle
+            # randomize order to avoid overfitting to the first obstacle during curriculum learning
             self.np_random.shuffle(obstacles)
         obst_states = np.concatenate(obstacles)
 
@@ -438,22 +489,73 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
         # collisions
         self.col_sum += self._check_collisions()
-        # collision = self._check_collisions()
 
         obs = np.concatenate(
             [
+                robot_qpos,
+                robot_qvel,
                 grip_pos,
-                object_pos.ravel(),
-                object_rel_pos.ravel(),
-                gripper_state,
-                object_rot.ravel(),
-                object_velp.ravel(),
-                object_velr.ravel(),
                 grip_velp,
-                gripper_vel,
+                object_pos,
+                object_velp,
                 obst_states
             ]
         )
+
+        # dt = self.n_substeps * self.model.opt.timestep
+        # # robot
+        # robot_qpos, robot_qvel = self._utils.robot_get_obs(self.model, self.data, self._model_names.joint_names)
+        #
+        # # gripper
+        # grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
+        # grip_velp = (self._utils.get_site_xvelp(self.model, self.data, "robot0:grip") * dt)
+        # gripper_vel = (robot_qvel[-2:] * dt)
+        # gripper_state = robot_qpos[-2:]
+        #
+        # # object
+        # object_pos = self._utils.get_site_xpos(self.model, self.data, "object0")
+        # object_rot = rotations.mat2euler(self._utils.get_site_xmat(self.model, self.data, "object0"))
+        # object_velp = (self._utils.get_site_xvelp(self.model, self.data, "object0") * dt)
+        # object_velp -= grip_velp
+        # object_velr = (self._utils.get_site_xvelr(self.model, self.data, "object0") * dt)
+        #
+        # # object-gripper
+        # object_rel_pos = object_pos - grip_pos
+        # object_gripper_dist = np.linalg.norm(object_rel_pos.ravel())
+        #
+        # # obstacles
+        # obstacles = []
+        # for n in range(self.total_obst):
+        #     pos = self._utils.get_joint_qpos(self.model, self.data, f'obstacle{n}' + ':joint')[:3]
+        #     vel = self.custom_get_joint_qvel(self.model, self.data, f'obstacle{n}' + ':joint')[:3]
+        #     size = self.get_geom_size(f'obstacle{n}')
+        #     obstacles.append(np.concatenate([pos, vel, size]))
+        # if not self.scenario:
+        #     # randomize order to avoid overfitting to the first obstacle
+        #     self.np_random.shuffle(obstacles)
+        # obst_states = np.concatenate(obstacles)
+        #
+        # # goal
+        # achieved_goal = np.squeeze(object_pos.copy())
+        #
+        # # collisions
+        # self.col_sum += self._check_collisions()
+        # # collision = self._check_collisions()
+        #
+        # obs = np.concatenate(
+        #     [
+        #         grip_pos,
+        #         object_pos.ravel(),
+        #         object_rel_pos.ravel(),
+        #         gripper_state,
+        #         object_rot.ravel(),
+        #         object_velp.ravel(),
+        #         object_velr.ravel(),
+        #         grip_velp,
+        #         gripper_vel,
+        #         obst_states
+        #     ]
+        # )
 
         return {
             "observation": obs.copy(),
@@ -578,7 +680,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
             self._utils.set_joint_qpos(self.model, self.data, "object0:joint", object_qpos)
             # ensure that the robot has space to grab the object
             obj_safe_size = self.get_geom_size('object0').copy()
-            obj_safe_size += [0.05, 0.1, 0.2]
+            obj_safe_size += [0.1, 0.12, 0.2]
             paths.append({'pos': object_qpos[:3], 'size': obj_safe_size})
 
             # Sample goal
@@ -589,11 +691,11 @@ class RandDynObstEnv(gym.Env, EzPickle):
                 size=3
             )[:2]
             # for the target height we use sqrt, so that the robot has to learn to pick up quicker
-            goal[2] = object_qpos[2] + self.np_random.uniform(0, np.sqrt(self.target_range) * ws_size[2] * 2, size=1)
+            goal[2] = object_qpos[2] + 0.02 + self.np_random.uniform(0, np.sqrt(self.target_range) * ws_size[2] * 2, size=1)
             self.goal = goal.copy()
             # ensure that the robot has space to reach goal
             target_safe_size = self.get_geom_size('target0').copy()
-            target_safe_size += [0.05, 0.1, 0.2]
+            target_safe_size += [0.1, 0.12, 0.2]
             paths.append({'pos': goal, 'size': target_safe_size})
 
             self._randomize_obstacles(max_pos, min_pos, paths)
@@ -603,8 +705,8 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
     def _randomize_obstacles(self, max_pos, min_pos, paths):
         # obstacle size range
-        min_size = np.array([0.02, 0.02, 0.02])
-        max_size = np.array([0.05, 0.05, 0.05])
+        min_size = np.array([0.01, 0.01, 0.01])
+        max_size = np.array([0.03, 0.03, 0.03])
         for obst in range(self.num_obst):
             pos, size, vel = None, None, None
             site_pos, site_size, d = None, None, None
@@ -631,8 +733,8 @@ class RandDynObstEnv(gym.Env, EzPickle):
                 # random velocity in d direction
                 vel = np.zeros(6)
                 vel[d] = self.np_random.uniform(-self.max_vel, self.max_vel)
-                # give object a 20% chance to be static of same size of table
-                if self.np_random.uniform() <= 0.2:
+                # give object a 30% chance to be static of same size of table
+                if self.np_random.uniform() <= 0.3:
                     vel = np.zeros(6)
                     pos[d] = site_pos[d]
                     size[d] = site_size[d]
@@ -681,6 +783,15 @@ class RandDynObstEnv(gym.Env, EzPickle):
         geom_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, name)
         return self.model.geom_size[geom_id]
 
+    def get_obstacle_info(self):
+        obstacles = []
+        for n in range(self.total_obst):
+            obstacles.append({
+                'pos': self._utils.get_joint_qpos(self.model, self.data, f'obstacle{n}' + ':joint')[:3],
+                'size': self.get_geom_size(f'obstacle{n}')
+            })
+        return obstacles
+
     def set_geom_size(self, name, size):
         geom_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, name)
         self.model.geom_size[geom_id] = size
@@ -702,6 +813,10 @@ class RandDynObstEnv(gym.Env, EzPickle):
     def set_site_pos(self, name, pos):
         site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, name)
         self.model.site_pos[site_id] = pos
+
+    def set_site_quat(self, name, quat):
+        site_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, name)
+        self.model.site_quat[site_id] = quat
 
     # Small bug in gymnasium robotics returns wrong values, use local implementation for now.
     @staticmethod

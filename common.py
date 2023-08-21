@@ -20,7 +20,7 @@ def get_args():
                         choices=Robotics_envs_id)
     parser.add_argument('--render', help='whether to render a single rollout after each epoch', type=bool, default=False)
     parser.add_argument('--scenario', help='use a custom scenario for training', type=str, default='', choices=['lifted_obst'])
-    parser.add_argument('--control_mode', help='Control mode for the robot', type=str, default='position', choices=['position', 'position_rotation', 'torque'])
+    parser.add_argument('--control_mode', help='Control mode for the robot', type=str, default='position', choices=['position', 'position_rotation', 'torque', 'ik_controller'])
 
     args, _ = parser.parse_known_args()
 

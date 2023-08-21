@@ -38,8 +38,8 @@ class Tester:
 			# get current settings
 			self.render_env.unwrapped.obj_range = self.envs.get_attr('obj_range')[0]
 			self.render_env.unwrapped.target_range = self.envs.get_attr('target_range')[0]
-			# self.render_env.unwrapped.num_obst = self.args.num_obst  # always render max number of obstacles
-			self.render_env.unwrapped.num_obst = np.random.randint(0, self.args.num_obst + 1)
+			self.render_env.unwrapped.num_obst = self.args.num_obst  # always render max number of obstacles
+			# self.render_env.unwrapped.num_obst = np.random.randint(0, self.args.num_obst + 1)
 
 			obs, _ = self.render_env.reset()
 			for _ in range(self.args.timesteps):

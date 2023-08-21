@@ -12,12 +12,12 @@ def test_env():
     register_custom_envs()
     control_mode = 'position'
 
-    env = gym.make('RandDynObstEnv-v1', num_obst=3, control_mode=control_mode)
+    env = gym.make('RandDynObstEnv-v1', num_obst=3, control_mode='ik_controller', n_substeps=100)
     env.reset()
 
     global ctrl
     global rot_ctrl
-    ctrl = .2
+    ctrl = 1
     rot_ctrl = -1
 
     def on_press(key):
@@ -106,21 +106,26 @@ def test_env():
         env.step(action)
         env.render()
     #
-    # while True:
-    #     st = time.time()
-    #     env.unwrapped.num_obst = 3
+    # for j in range(1):
     #     env.reset()
-    #     env.render()
-    #     time.sleep(0.)
-    # for i in range(10):
-    #     env.step([0., 0., 0., 0.])
-    #     env.render()
-    #     time.sleep(0.1)
-    # print('Time:', time.time()-st)
+    #     for i in range(20):
+    #         env.step(np.random.rand(4)*2-1)
+    #         env.render()
+
+
+    # print( ' ------------------------------- TIME ------------------------------')
+    # for s in sorted(env.unwrapped.IKC.hyper_dict.items(), key=lambda x: x[1]['time']):
+    #     print(s)
+    # print( ' ------------------------------- ERROR -----------------------------')
+    # for s in sorted(env.unwrapped.IKC.hyper_dict.items(), key=lambda x: x[1]['error']):
+    #     print(s)
+    # print(f'Total Iterations: {env.unwrapped.IKC.nit}')
+    # print(f'Total Function Evaluations: {env.unwrapped.IKC.nfev}')
 
     # Collect events until released
     with keyboard.Listener(on_press=on_press) as listener:
         listener.join()
+
 
 
 if __name__ == '__main__':

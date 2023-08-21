@@ -258,7 +258,6 @@ class DDPG(tf.Module):
 				)
 			# define target
 			y = tf.stop_gradient(rews + self.args.gamma * ret) 	# TODO: terminal state missing (1 - done)
-			# y = rews + self.args.gamma * ret
 			# define the delta Q
 			critic_loss = tf.reduce_mean(tf.square(self.critic_network([obs, acts], training=True) - y))
 		critic_grad = tape.gradient(critic_loss, self.critic_network.trainable_variables)

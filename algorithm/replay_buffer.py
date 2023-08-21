@@ -1,6 +1,6 @@
 import numpy as np
 import copy
-from envs.utils import quaternion_to_euler_angle
+from envs.utils import quat2eul
 
 
 def goal_concat(obs, goal):

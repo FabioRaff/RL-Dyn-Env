@@ -19,9 +19,9 @@ class NormalLearner:
 		if args.scenario == '' and args.cur_acc >= 0.9:
 			# adjust range
 			if self.envs.get_attr('obj_range')[0] < 0.99:
-				self.envs.set_attr('obj_range', [x + 0.1 for x in self.envs.get_attr('obj_range')])
+				self.envs.set_attr('obj_range', [x + 0.3 for x in self.envs.get_attr('obj_range')])
 			if self.envs.get_attr('target_range')[0] < 0.99:
-				self.envs.set_attr('target_range', [x + 0.1 for x in self.envs.get_attr('target_range')])
+				self.envs.set_attr('target_range', [x + 0.3 for x in self.envs.get_attr('target_range')])
 
 			if self.envs.get_attr('obj_range')[0] > 0.95 and args.num_obst < 3:
 				# add obstacles

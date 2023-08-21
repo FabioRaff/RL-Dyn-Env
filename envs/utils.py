@@ -10,7 +10,7 @@ def goal_distance_obs(obs):
 	return goal_distance(obs['achieved_goal'], obs['desired_goal'])
 
 
-def quaternion_to_euler_angle(array):
+def quat2eul(array):
 	# from "Energy-Based Hindsight Experience Prioritization"
 	w = array[0]
 	x = array[1]
@@ -31,7 +31,7 @@ def quaternion_to_euler_angle(array):
 	return result
 
 
-def euler_to_quaternion_angle(array):
+def eul2quat(array):
 	X = array[0]
 	Y = array[1]
 	Z = array[2]
