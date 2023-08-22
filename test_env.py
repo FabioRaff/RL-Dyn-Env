@@ -23,7 +23,7 @@ def test_env():
     def on_press(key):
         global ctrl
         global rot_ctrl
-        grip_ctrl = .8
+        grip_ctrl = 0.
         action = [0., 0., 0., 0.]
         try:
             if control_mode == 'position':
@@ -42,9 +42,9 @@ def test_env():
                     action = [0., 0., -ctrl, -grip_ctrl]
                 # gripper
                 elif key.char == 'n':
-                    action = [0., 0., 0., grip_ctrl]
+                    action = [0., 0., 0., -0.5]
                 elif key.char == 'm':
-                    action = [0., 0., 0., -grip_ctrl]
+                    action = [0., 0., 0., 0.5]
             elif control_mode == 'position_rotation':
                 # invert direction
                 if key.char == 'z':
@@ -106,11 +106,11 @@ def test_env():
         env.step(action)
         env.render()
     #
-    # for j in range(1):
-    #     env.reset()
-    #     for i in range(20):
-    #         env.step(np.random.rand(4)*2-1)
-    #         env.render()
+    for j in range(1):
+        env.reset()
+        for i in range(20):
+            env.step(np.random.rand(4)*2-1)
+            env.render()
 
 
     # print( ' ------------------------------- TIME ------------------------------')

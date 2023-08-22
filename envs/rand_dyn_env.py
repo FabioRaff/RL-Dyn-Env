@@ -10,7 +10,6 @@ from gymnasium.envs.mujoco.mujoco_rendering import MujocoRenderer
 from gymnasium.utils.ezpickle import EzPickle
 
 from gymnasium_robotics.utils import mujoco_utils
-from gymnasium_robotics.utils import rotations
 
 from envs.utils import eul2quat
 from envs.ik_controller import IKController
@@ -188,7 +187,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
         if not os.path.exists(self.fullpath):
             raise OSError(f"File {self.fullpath} does not exist")
 
-        # number of obstacles declared in the xml file. (num_obst only defines the number of obst to be randomized on the table)
+        # total_obst = number of obstacles declared in the xml file. (num_obst defines the number of obstacles to be randomized on the table)
         self.total_obst = 3
 
         self.n_substeps = n_substeps
@@ -332,7 +331,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
             # 1.2125068458259467,0.7575255189080952,0.6111255208249269
 
             # calculate forward kinematics and capsule positions for visualization
-            q_res, robot_capsules, obst_capsules = self.IKC.solve(qpos, obstacles, target_pos) #, grip_pos, mocap_sol)
+            q_res, robot_capsules, obst_capsules = self.IKC.solve(qpos, obstacles, target_pos)
 
             for i, caps in enumerate(robot_capsules + obst_capsules):
                 pos = (caps['u'] + caps['p']) / 2
