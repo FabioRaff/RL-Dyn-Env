@@ -1,8 +1,6 @@
-import numpy as np
 import time
-from deap import base, creator, tools
-from deap import cma as dcma
-from scipy.spatial.transform import Rotation as R
+
+import numpy as np
 
 from ik_controller.wrapper import solve_ik
 

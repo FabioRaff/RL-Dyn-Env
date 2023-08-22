@@ -1,10 +1,9 @@
+import os
+import time
+
+from algorithm import create_agent
 from common import get_args
 from envs.config import register_custom_envs, make_env
-from envs.custom_scenarios import scenarios
-from algorithm import create_agent
-import os
-import numpy as np
-import time
 
 
 class Player:

@@ -1,8 +1,8 @@
 import gymnasium as gym
-from envs.config import register_custom_envs
-from pynput import keyboard
-import time
 import numpy as np
+from pynput import keyboard
+
+from envs.config import register_custom_envs
 
 global ctrl
 global rot_ctrl

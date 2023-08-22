@@ -1,18 +1,16 @@
 import os
-import numpy as np
-import mujoco
-import gymnasium as gym
-
 from typing import Optional
 
+import gymnasium as gym
+import mujoco
+import numpy as np
 from gymnasium import spaces
 from gymnasium.envs.mujoco.mujoco_rendering import MujocoRenderer
 from gymnasium.utils.ezpickle import EzPickle
-
 from gymnasium_robotics.utils import mujoco_utils
 
-from envs.utils import eul2quat
 from envs.ik_controller import IKController
+from envs.utils import eul2quat
 
 DEFAULT_CAMERA_CONFIG = {
     "distance": 1,
@@ -25,7 +23,6 @@ DEFAULT_SIZE = 480
 
 
 class RandDynObstEnv(gym.Env, EzPickle):
-
     """
     ## Description
 
@@ -292,7 +289,8 @@ class RandDynObstEnv(gym.Env, EzPickle):
         self.actuation_center = (ctrlrange[:, 1] + ctrlrange[:, 0]) / 2.0
 
         # Obstacle IDs (for collision checking)
-        self.obstacle_ids = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, f'obstacle{n}') for n in range(self.total_obst)]
+        self.obstacle_ids = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, f'obstacle{n}') for n in
+                             range(self.total_obst)]
 
     def step(self, action):
         """Run one timestep of the environment's dynamics using the agent actions.
@@ -313,7 +311,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
         action = np.clip(action, -1, 1)
 
-        if self.control_mode=='ik_controller':
+        if self.control_mode == 'ik_controller':
             ##########################
             # get obstacle information
             obstacles = self.get_obstacle_info()
@@ -425,7 +423,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
             d = obst['direction']
             # this is to ensure that obstacles stay on their path, even if a collision happen
             # self._utils.set_joint_qpos(self.model, self.data, obst['name'] + ':joint', obst['pos'])
-            obst['pos'][d] += obst['vel'][d]*self.dt
+            obst['pos'][d] += obst['vel'][d] * self.dt
             # flip direction
             if (pos[d] - obst['size'][d]) <= obst['l_bound'][d] + margin:
                 obst['vel'] = abs(obst['vel'])
@@ -579,7 +577,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
         d = np.linalg.norm(achieved_goal - desired_goal, axis=-1)
         return (d < self.obj_goal_dist_threshold).astype(np.float32)
 
-    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None,):
+    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None, ):
         """Reset MuJoCo simulation to initial state.
 
         Note: Attempt to reset the simulator. Since we randomize initial conditions, it
@@ -690,7 +688,8 @@ class RandDynObstEnv(gym.Env, EzPickle):
                 size=3
             )[:2]
             # for the target height we use sqrt, so that the robot has to learn to pick up quicker
-            goal[2] = object_qpos[2] + 0.02 + self.np_random.uniform(0, np.sqrt(self.target_range) * ws_size[2] * 2, size=1)
+            goal[2] = object_qpos[2] + 0.02 + self.np_random.uniform(0, np.sqrt(self.target_range) * ws_size[2] * 2,
+                                                                     size=1)
             self.goal = goal.copy()
             # ensure that the robot has space to reach goal
             target_safe_size = self.get_geom_size('target0').copy()
