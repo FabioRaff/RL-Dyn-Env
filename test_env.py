@@ -106,11 +106,11 @@ def test_env():
         env.step(action)
         env.render()
     #
-    for j in range(1):
-        env.reset()
-        for i in range(20):
-            env.step(np.random.rand(4)*2-1)
-            env.render()
+    # for j in range(1):
+    #     env.reset()
+    #     for i in range(20):
+    #         env.step(np.random.rand(4)*2-1)
+    #         env.render()
 
 
     # print( ' ------------------------------- TIME ------------------------------')

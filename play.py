@@ -30,7 +30,7 @@ class Player:
 
         acc_sum = 0
         col_sum = 0
-        seed = np.random.randint(1000)
+        seed = 700
 
         for i in range(self.test_rollouts):
 

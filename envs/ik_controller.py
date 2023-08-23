@@ -123,13 +123,13 @@ class IKController:
         # options for cma
         options = {
             "robot_base": self.T_wb,  # displacement of the robot base in global xyz coordinates
-            "alpha": 0.52,  # weight for position error
+            "alpha": 0.57,  # weight for position error
             "beta": 0.38,  # weight for posture error
-            "gamma": 0.1,  # weight for joint movement error
-            "sigma": 1.0,  # standard deviation of initial population
+            "gamma": 0.05,  # weight for joint movement error
+            "sigma": 0.08,  # standard deviation of initial population
             "ngen": 50,  # max number of generations
-            "popsize": 32,  # population size (lambda)
-            "ftol": 0.001,
+            "popsize": 64,  # population size (lambda)
+            "ftol": 0.0001,
             # tolerance of f value (error). Algorithm stops early once the mean improvement per generation is below this value.
             "bounds": self.jnt_bounds  # Joint limit constraints
         }
@@ -138,8 +138,8 @@ class IKController:
 
         q_res, f_res = solve_ik(q, obstacles, target_pos, options)
 
-        # print('pytotal:   ', time.perf_counter() - st)
-        # print('Value: ', f_res)
+        # print('time:   ', time.perf_counter() - st)
+        # print('value: ', f_res)
 
         # for sig in self.sigs:
         #     for ngen in self.ngens:
