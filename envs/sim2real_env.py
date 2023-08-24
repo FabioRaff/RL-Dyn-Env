@@ -90,6 +90,11 @@ class Sim2RealEnv(gym.Env, EzPickle):
         grip_pos = self.robot.get_current_pose()[:3]  # TODO expect the pose to be in 6D
         target_pos = (grip_pos + np.clip(action[:3], -1, 1) * 0.05).copy()
 
+        # to avoid hitting the table, we clip the target in z-direciton TODO: measure table height + 0.025
+        table_edge = 0.425
+        if target_pos[2] < table_edge:
+            target_pos[2] = table_edge
+
         qpos = self.robot.get_current_q()[:7] # TODO: check
 
         # calculate forward kinematics and capsule positions for visualization

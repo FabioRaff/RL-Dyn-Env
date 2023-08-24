@@ -114,6 +114,10 @@ void CMA::update(std::vector<std::pair<Eigen::VectorXf, float>>& population){
 
     sigma *= std::exp((ps.norm() / chiN - 1.) * cs / damps);
 
+    // sometimes the values can overflow, so we add a small regularization to C
+    float epsilon = 1e-10;
+    C = C + epsilon * Eigen::MatrixXf::Identity(dim, dim);
+
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXf> es(C);
 
     diagD = es.eigenvalues().cwiseSqrt();

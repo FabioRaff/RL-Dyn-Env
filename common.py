@@ -19,7 +19,7 @@ def get_args():
     parser.add_argument('--env', help='gym env id', type=str, default='RandDynObstEnv-v1',
                         choices=Robotics_envs_id)
     parser.add_argument('--render', help='whether to render a single rollout after each epoch', type=bool, default=False)
-    parser.add_argument('--scenario', help='use a custom scenario for training', type=str, default='', choices=['lifted_obst'])
+    parser.add_argument('--scenario', help='use a custom scenario for training', type=str, default='', choices=list(scenarios.keys()))
     parser.add_argument('--control_mode', help='Control mode for the robot', type=str, default='position', choices=['position', 'position_rotation', 'torque', 'ik_controller'])
 
     args, _ = parser.parse_known_args()
@@ -57,7 +57,7 @@ def get_args():
 
     # Rewards
     parser.add_argument('--obj_lost_reward', help='additional reward for loosing object from gripper', type=np.float32, default=-0.5)
-    parser.add_argument('--collision_reward', help='additional reward for collisions', type=np.float32, default=-0.8)
+    parser.add_argument('--collision_reward', help='additional reward for collisions', type=np.float32, default=-0.1)
 
     parser.add_argument('--clip_return', help='whether to clip return value', type=str2bool, default=True)
     parser.add_argument('--reward_min', help='min factor for clip_return', type=np.float32, default=-1.)

@@ -223,6 +223,7 @@ extern "C" {
 
             // Stop if frange is below threshold
             if (frange < context.ftol) {
+//                std::cout << gen << "\n";
                 break;
             }
 

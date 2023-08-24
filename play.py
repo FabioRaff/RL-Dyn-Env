@@ -42,7 +42,7 @@ class Player:
                 obs, _, _, _, info = env.step(action)
 
                 env.render()
-                time.sleep(0.05)
+                # time.sleep(0.05)
                 if info['Success']:
                     acc_sum += 1
                     col_sum += info['Collisions']

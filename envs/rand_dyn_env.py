@@ -319,6 +319,11 @@ class RandDynObstEnv(gym.Env, EzPickle):
             grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
             target_pos = (grip_pos + np.clip(action[:3], -1, 1) * 0.05).copy()
             self.target_grip_pos += action[:3] * 0.05
+            # to avoid hitting the table, we clip the target in z-direciton
+            table_edge = (self.get_body_pos('table0') + self.get_geom_size('table0'))[2] + 0.025
+            if target_pos[2] < table_edge:
+                target_pos[2] = table_edge
+
             self.set_site_pos("target_pos", target_pos)
 
             qpos = self.data.qpos[:7].copy()
