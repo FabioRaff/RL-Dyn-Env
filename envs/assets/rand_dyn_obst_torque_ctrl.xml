@@ -31,12 +31,12 @@
 		</body>
 
 		<!-- Table -->
-		<body pos="1.3 0.775 0.2" name="table0">
+		<body pos="1.3 0.75 0.2" name="table0">
 			<geom name="table0" size="0.2 0.4 0.2" type="box" mass="2000" material="table_mat"/>
 		</body>
 
 		<!-- Workspace: Object, Target and Obstacles may only be spawned inside this area -->
-		<site name="workspace" pos='1.3 0.775 0.5' size="0.2 0.4 0.1" rgba="1 1 1 0.05" type="box"/>
+		<site name="workspace" pos='1.3 0.75 0.5' size="0.2 0.4 0.1" rgba="1 1 1 0.05" type="box"/>
 
 		<!-- Target -->
 		<site name="target0" pos="1.3 0.75 0.45" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere"/>

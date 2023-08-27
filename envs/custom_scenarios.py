@@ -2,8 +2,8 @@
 
 lifted_obst = {
     'obj_init_space': {
-        'min': [1.15, 1.025],
-        'max': [1.45, 1.125]
+        'min': [1.15, 1.0],
+        'max': [1.45, 1.1]
     },
     'target_init_space': {
         'min': [1.15, 0.4, 0.42],
@@ -176,9 +176,54 @@ dyn_obst_v2 = {
     }
 }
 
+sim2real = {
+    'obj_init_space': {
+        'min': [1.15, 1.0],
+        'max': [1.45, 1.1]
+    },
+    'target_init_space': {
+        'min': [1.15, 0.4, 0.42],
+        'max': [1.45, 0.5, 0.42]
+    },
+    'obstacle0': {
+        'pos': [1.3, 0.75, 0.49],
+        'size': [0.02, 0.042, 0.035],
+        'vel': {
+            'min': 0.1,
+            'max': 0.1
+        },
+        'dir': 0,
+        'site_pos': [1.3, 0.75, 0.451],
+        'site_size': [0.2, 0.042, 0.035]
+    },
+    'obstacle1': {
+        'pos': [1.3, 0.75, 0.41],
+        'size': [0.2, 0.02, 0.005],
+        'vel': {
+            'min': 0.,
+            'max': 0.
+        },
+        'dir': 0,
+        'site_pos': [1.3, 0.75, 0.41],
+        'site_size': [0.2, 0.02, 0.005]
+    },
+    'obstacle2': {
+        'pos': [1.1, 0.6, 0.41],
+        'size': [0.02, 0.02, 0.02],
+        'vel': {
+            'min': 0.,
+            'max': 0.
+        },
+        'dir': 0,
+        'site_pos': [1.1, 0.6, 0.41],
+        'site_size': [0.02, 0.02, 0.02]
+    }
+}
+
 scenarios = {
     'lifted_obst': lifted_obst,
     'dyn_sqr_obst': dyn_sqr_obst,
     'dyn_obst_v1': dyn_obst_v1,
-    'dyn_obst_v2': dyn_obst_v2
+    'dyn_obst_v2': dyn_obst_v2,
+    'sim2real': sim2real
 }

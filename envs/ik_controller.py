@@ -119,17 +119,16 @@ class IKController:
         # self.current_q = q.copy()
         # self.current_obstacles = obstacles
         # self.target_pos = target_pos
-
         # options for cma
         options = {
             "robot_base": self.T_wb,  # displacement of the robot base in global xyz coordinates
-            "alpha": 0.57,  # weight for position error
+            "alpha": 0.8,  # weight for position error
             "beta": 0.38,  # weight for posture error
-            "gamma": 0.1,  # weight for joint movement error
-            "sigma": 0.5,  # standard deviation of initial population
+            "gamma": 0.01,  # weight for joint movement error
+            "sigma": 0.8,  # standard deviation of initial population
             "ngen": 100,  # max number of generations
             "popsize": 64,  # population size (lambda)
-            "ftol": 0.001,
+            "ftol": 0.000000001,
             # tolerance of f value (error). Algorithm stops early once the mean improvement per generation is below this value.
             "bounds": self.jnt_bounds  # Joint limit constraints
         }

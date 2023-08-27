@@ -43,25 +43,32 @@ class FrankaRobot:
 
     def move_q(self, q):
         # safety constraint, if overall Force exceeds the value, the robot stops automatically
-        safety_robot = MotionData().with_reaction(Reaction(Measure.ForceXYZNorm() > 10.0))
-        safety_gripper = MotionData().with_reaction(Reaction(Measure.ForceXYZNorm() > 10.0))
+        # safety_robot = MotionData().with_reaction(Reaction(Measure.ForceXYZNorm() > 10.0))
+        # safety_gripper = MotionData().with_reaction(Reaction(Measure.ForceXYZNorm() > 10.0))
+
+        # Somehow the 7. joint from the real robot is rotated by pi/4 compared to the simulation, so we always add
+        # this value here
+        q_ = q[:7].copy() + np.array([0., 0., 0., 0., 0., 0., np.pi/4])
 
         # First 7 numbers are the joint angels,
-        self.robot.move(JointMotion(q[:7]), safety_robot)
+        self.robot.move(JointMotion(q_))#, safety_robot)
 
-        if safety_robot.has_fired:
-            self.robot.recover_from_errors()
-            print("Overall Force exceeded 10N!")
+        # if safety_robot.has_fired:
+        #     self.robot.recover_from_errors()
+        #     print("Overall Force exceeded 10N!")
 
         # Last one is gripper control
         # TODO: The RL agent proposes actions in (-1, 1), where -1 is a closed and 1 a fully opened gripper.
         # TODO: In Mujoco, we map this to a control input in (0, 255), here it should be (0, 0.08)
-        w = ((self.gripper.width + 1.0) / 2) * 0.08
-        self.gripper.move(w, safety_gripper)
+        w = ((q[-1] + 1.0) / 2) * 0.079
+        # Make sure the robot don't apply too much action on the cube
+        if w < 0.042:
+            w = 0.042
+        self.gripper.move(w)#, safety_gripper)
 
-        if safety_gripper.has_fired:
-            self.robot.recover_from_errors()
-            print("Overall Force exceeded 10N!")
+        # if safety_gripper.has_fired:
+        #     self.robot.recover_from_errors()
+        #     print("Overall Force exceeded 10N!")
 
     def get_current_pose(self):
         return self.robot.current_pose().vector()
@@ -71,12 +78,16 @@ class FrankaRobot:
         # TODO: The RL agent expects 2 values for each finger, but they should always be equal.
         # TODO: They should lie in range (0.004  -  0.036) for when the gripper is completely closed or open respectively
         # TODO: As per documentation, the width parameter has 0 for fully closed and 0.08 for fully open, so we map it
-        w = (self.gripper.width / 0.08) * 0.032 + 0.004
+        w = (self.gripper.width() / 0.08) * 0.032 + 0.004
         return np.append(state.q, [w]*2)
 
     def get_current_q_dq(self):
         state = self.robot.get_state()
-        return state.q, state.dq
+        w = (self.gripper.width() / 0.08) * 0.032 + 0.004
+        q = np.append(state.q, [w]*2)
+        dq = np.append(state.dq, [0., 0.])
+
+        return q, dq
 
     @staticmethod
     def map_width(value):

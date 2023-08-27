@@ -90,6 +90,9 @@ def get_args():
     args.obs_dims = list(goal_based_process(env.reset()[0]).shape)
     args.acts_dims = [env.action_space.shape[0]]
     args.compute_reward = env.compute_reward
+
+    if args.env == "Sim2RealEnv-v1":
+        env.unwrapped.cam.stop()
     return args
 
 

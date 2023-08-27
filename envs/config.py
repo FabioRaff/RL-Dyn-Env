@@ -2,7 +2,7 @@ import gymnasium as gym
 
 Robotics_envs_id = [
     'RandDynObstEnv-v1',
-    'Sim2RealEnv'
+    'Sim2RealEnv-v1'
 ]
 
 

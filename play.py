@@ -22,7 +22,7 @@ class Player:
         # play policy on env
         env = make_env(self.args)
         if self.args.scenario:
-            env.scenario = scenarios[self.args.scenario]
+            env.unwrapped.scenario = scenarios[self.args.scenario]
         else:
             env.unwrapped.obj_range = 1.0
             env.unwrapped.target_range = 1.0
@@ -30,7 +30,7 @@ class Player:
 
         acc_sum = 0
         col_sum = 0
-        seed = 700
+        seed = 42
 
         for i in range(self.test_rollouts):
 
@@ -42,7 +42,7 @@ class Player:
                 obs, _, _, _, info = env.step(action)
 
                 env.render()
-                # time.sleep(0.05)
+                time.sleep(0.05)
                 if info['Success']:
                     acc_sum += 1
                     col_sum += info['Collisions']

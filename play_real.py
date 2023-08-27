@@ -28,11 +28,14 @@ class Player:
 
             obs, _ = env.reset()
 
-            for timestep in range(args.timesteps):
+            for timestep in range(100):
                 action = self.agent.step(obs)
                 obs, _, _, _, info = env.step(action)
 
-                env.render()
+                # Move robot if everything looks fine:
+                env.unwrapped.robot.robot.recover_from_errors()
+                env.unwrapped.robot.move_q(info['action'])
+
                 time.sleep(0.05)
                 if info['Success']:
                     acc_sum += 1

@@ -464,6 +464,7 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
         # gripper
         grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
+        print(grip_pos)
         grip_velp = self._utils.get_site_xvelp(self.model, self.data, "robot0:grip")
 
         # object

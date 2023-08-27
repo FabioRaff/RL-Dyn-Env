@@ -1,6 +1,7 @@
 import gymnasium as gym
 import numpy as np
 from pynput import keyboard
+from envs.custom_scenarios import scenarios
 
 from envs.config import register_custom_envs
 
@@ -12,7 +13,7 @@ def test_env():
     register_custom_envs()
     control_mode = 'position'
 
-    env = gym.make('RandDynObstEnv-v1', num_obst=3, control_mode='ik_controller', n_substeps=100)
+    env = gym.make('RandDynObstEnv-v1', num_obst=3, control_mode='ik_controller', n_substeps=100, scenario=scenarios["lifted_obst"])
     env.reset()
 
     global ctrl
