@@ -18,6 +18,103 @@ const Eigen::MatrixXf IDENTITY_3X3 = Eigen::MatrixXf::Identity(3, 3);
 
 extern "C" {
 
+//    float calc_min_distance(const std::pair<std::vector<Capsule>, std::vector<Capsule>>& capsules_pair) {
+//
+//    const std::vector<Capsule>& robot_capsules = capsules_pair.first;
+//    const std::vector<Capsule>& obst_capsules = capsules_pair.second;
+//
+//    float min_dist = std::numeric_limits<float>::max();
+//
+//    std::vector<Eigen::Vector2f> vertices(4);
+//
+//    for (size_t i = 0; i < robot_capsules.size(); ++i) {
+//        const Capsule& r_caps = robot_capsules[i];
+//
+//        for (size_t j = 0; j < obst_capsules.size(); ++j) {
+//            const Capsule& o_caps = obst_capsules[j];
+//                std::cout << "r_cap: " << i << " p: " << r_caps.p.transpose() << "\n";
+//                std::cout << "o_cap: " << j << " p: " << o_caps.p.transpose() << "\n";
+//
+//            Eigen::Vector3f centerDist = o_caps.p - r_caps.p;
+//            float estimatedMinDist = centerDist.norm() - (r_caps.u - r_caps.p).norm() - (o_caps.u - o_caps.p).norm();
+//
+//            if (estimatedMinDist > min_dist) {
+//                continue; // Skip to the next obstacle capsule
+//            }
+//
+//            Eigen::Vector3f s1 = r_caps.u - r_caps.p;
+//            Eigen::Vector3f s2 = o_caps.u - o_caps.p;
+//
+//            Eigen::MatrixXf A(3,2);
+//            A.col(0) = s2;
+//            A.col(1) = -s1;
+//
+//            Eigen::Vector3f y = o_caps.p - r_caps.p;
+//            Eigen::HouseholderQR<Eigen::MatrixXf> qr(A);
+//            Eigen::MatrixXf basis = Eigen::MatrixXf::Identity(A.rows(), 2);
+//            Eigen::MatrixXf Q = qr.householderQ() * basis;
+//            Eigen::MatrixXf R = qr.matrixQR().topLeftCorner(2, 2).triangularView<Eigen::Upper>();
+//
+//            // 1. Print out the Q and R matrices from the QR factorization
+////            std::cout << "Q matrix:\n" << Q << "\n";
+////            std::cout << "R matrix:\n" << R << "\n";
+//
+//            auto u = [&](const Eigen::Vector2f& x) -> Eigen::Vector2f {
+//                return R * x + Q.transpose() * y;
+//            };
+//
+//            vertices[0] = u({0, 0});
+//            vertices[1] = u({0, 1});
+//            vertices[2] = u({1, 1});
+//            vertices[3] = u({1, 0});
+//
+//            // 2. Print out all vertices
+////            for (int v = 0; v < 4; ++v) {
+////                std::cout << "Vertex " << v << ": " << vertices[v].transpose() << "\n";
+////            }
+//
+//            int side_sum = 0;
+//            Eigen::Vector2f u_min;
+//            float min_distance = std::numeric_limits<float>::max();
+//
+//            for (int k = 0; k < 4; ++k) {
+//                Eigen::Vector2f v1 = vertices[k];
+//                Eigen::Vector2f v2 = (k != 3) ? vertices[k + 1] : vertices[0];
+//
+//                float res = -v1.y() * (v2.x() - v1.x()) + v1.x() * (v2.y() - v1.y());
+//                side_sum += (res >= 0 ? 1 : -1);
+//
+//                Eigen::Vector2f temp = closest_point_on_segment(v1, v2);
+//
+//                // 3. Print out the "temp" variable from closest_point_on_segment
+////                std::cout << "Temp point (for vertices " << k << " and " << (k != 3 ? k + 1 : 0) << "): " << temp.transpose() << "\n";
+//
+//                float dist = temp.norm();
+//
+//                // 4. Print out each calculated distance with the corresponding "i" and "j" value
+////                std::cout << "Calculated distance (i=" << i << ", j=" << j << "): " << dist << "\n";
+//
+//                if (dist < min_distance) {
+//                    min_distance = dist;
+//                    u_min = temp;
+//                }
+//            }
+//            if (std::abs(side_sum) == 4) {
+//                u_min = Eigen::Vector2f(0, 0);
+//            }
+//            std::cout << "u_min: " << u_min.transpose() << "\n";
+//            float dist = std::sqrt(u_min.squaredNorm() + y.squaredNorm() - y.dot(Q * Q.transpose() * y)) - r_caps.roh - o_caps.roh;
+//            std::cout << "Min Dist: " << dist << "\n";
+//            min_dist = std::min(min_dist, dist);
+//
+//        }
+//    }
+//    // 5. Print the resulting minimum distance
+////    std::cout << "Final minimum distance: " << min_dist << "\n";
+//
+//    return min_dist;
+//}
+
     float calc_min_distance(const std::pair<std::vector<Capsule>, std::vector<Capsule>>& capsules_pair) {
 
         const std::vector<Capsule>& robot_capsules = capsules_pair.first;
@@ -33,11 +130,18 @@ extern "C" {
             for (size_t j = 0; j < obst_capsules.size(); ++j) {
                 const Capsule& o_caps = obst_capsules[j];
 
-                Eigen::Vector3f centerDist = o_caps.p - r_caps.p;
-                float estimatedMinDist = centerDist.norm() - (r_caps.u - r_caps.p).norm() - (o_caps.u - o_caps.p).norm();
+                // do a quick estimate of the minimum distance by using bounding spheres.
+                // centers
+                Eigen::Vector3f c_r = 0.5f * (r_caps.p + r_caps.u);
+                Eigen::Vector3f c_o = 0.5f * (o_caps.p + o_caps.u);
+                // half-lengths
+                float h_r = (r_caps.p - r_caps.u).norm() + r_caps.roh;
+                float h_o = (o_caps.p - o_caps.u).norm() + o_caps.roh;
+
+                float estimatedMinDist = (c_r - c_o).norm() - h_r - h_o;
 
                 if (estimatedMinDist > min_dist) {
-                    continue; // Skip to the next obstacle capsule
+                    continue; // Skip to the next capsule
                 }
 
                 Eigen::Vector3f s1 = r_caps.u - r_caps.p;
@@ -81,11 +185,11 @@ extern "C" {
                         u_min = temp;
                     }
                 }
-
-                if (std::abs(side_sum) != 4) {
-                    float dist = std::sqrt(u_min.squaredNorm() + y.squaredNorm() - y.dot(Q * Q.transpose() * y)) - r_caps.roh - o_caps.roh;
-                    min_dist = std::min(min_dist, dist);
+                if (std::abs(side_sum) == 4) {
+                    u_min = Eigen::Vector2f(0, 0);
                 }
+                float dist = std::sqrt(u_min.squaredNorm() + y.squaredNorm() - y.dot(Q * Q.transpose() * y)) - r_caps.roh - o_caps.roh;
+                min_dist = std::min(min_dist, dist);
             }
         }
         return min_dist;

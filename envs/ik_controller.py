@@ -101,6 +101,7 @@ class IKController:
             [2.8973, 1.7628, 2.8973, -0.0698, 2.8973, 3.7525, 2.8973]
         ]
         self.total_time_cpp = 0
+        self.control_time = 0
 
         # hypertune
         self.hyper_dict = {}
@@ -121,14 +122,14 @@ class IKController:
         # self.target_pos = target_pos
         # options for cma
         options = {
-            "robot_base": self.T_wb,  # displacement of the robot base in global xyz coordinates
-            "alpha": 0.8,  # weight for position error
-            "beta": 0.38,  # weight for posture error
-            "gamma": 0.01,  # weight for joint movement error
-            "sigma": 0.8,  # standard deviation of initial population
-            "ngen": 100,  # max number of generations
-            "popsize": 64,  # population size (lambda)
-            "ftol": 0.000000001,
+            "robot_base": self.T_wb,  # displacement of the robot base in world xyz coordinates
+            "alpha": 0.7,  # weight for position error
+            "beta": 0.2,  # weight for posture error
+            "gamma": 0.1,  # weight for joint movement error
+            "sigma": 0.2,  # standard deviation of initial population
+            "ngen": 50,  # max number of generations
+            "popsize": 24,  # population size (lambda)
+            "ftol": 0.000001,
             # tolerance of f value (error). Algorithm stops early once the mean improvement per generation is below this value.
             "bounds": self.jnt_bounds  # Joint limit constraints
         }
@@ -137,7 +138,7 @@ class IKController:
 
         q_res, f_res = solve_ik(q, obstacles, target_pos, options)
 
-        # print('time:   ', time.perf_counter() - st)
+        self.control_time =  time.perf_counter() - st
         # print('value: ', f_res)
 
         # for sig in self.sigs:

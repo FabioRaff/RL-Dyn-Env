@@ -24,7 +24,9 @@ class Tester:
 			info = None
 			if not self.args.scenario:
 				# random number of obstacles for each env
-				self.envs.set_attr('num_obst', list(np.random.randint(0, self.args.num_obst + 1, size=10)))
+				# self.envs.set_attr('num_obst', list(np.random.randint(0, self.args.num_obst + 1, size=self.args.num_envs)))
+				# test with max number of obstacles
+				self.envs.set_attr('num_obst', [self.args.num_obst]*self.args.num_envs)
 			obs, _ = self.envs.reset()
 			for timestep in range(self.args.timesteps):
 				actions = agent.step_batch([dict(zip(obs, t)) for t in zip(*obs.values())]) 	# convert dict of lists into list of dicts

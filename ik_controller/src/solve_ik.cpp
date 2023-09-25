@@ -11,49 +11,73 @@
 #include "../include/cma_es.hpp"
 
 //Todo For debugging in python
+template <typename MatrixType>
+void printVariableDetails(const char* varName, const MatrixType& mat) {
+    if constexpr (std::is_base_of<Eigen::MatrixBase<MatrixType>, MatrixType>::value) {
+        std::cout << "Variable: " << varName << std::endl;
+        std::cout << "Type: " << typeid(typename MatrixType::Scalar).name() << std::endl;
+        std::cout << "Rows: " << mat.rows() << std::endl;
+        std::cout << "Cols: " << mat.cols() << std::endl;
+        std::cout << "Value:\n" << mat << std::endl;
+    } else if constexpr (std::is_same_v<MatrixType, std::vector<Eigen::VectorXf>>) {
+        std::cout << "Variable: " << varName << std::endl;
+        std::cout << "Type: std::vector<Eigen::VectorXf>" << std::endl;
+        std::cout << "Size: " << mat.size() << std::endl;
+        std::cout << "Values:\n";
+        for (const auto& vec : mat) {
+            std::cout << vec.transpose() << std::endl;  // Transpose for horizontal display
+        }
+    } else if constexpr (std::is_same_v<MatrixType, std::vector<Eigen::Matrix4f>>) {
+        std::cout << "Variable: " << varName << std::endl;
+        std::cout << "Type: std::vector<Eigen::Matrix4f>" << std::endl;
+        std::cout << "Size: " << mat.size() << std::endl;
+        std::cout << "Values:\n";
+        for (const auto& matrix : mat) {
+            std::cout << matrix << "\n\n";
+        }
+    } else if constexpr (std::is_same_v<MatrixType, std::vector<std::pair<Eigen::VectorXf, float>>>) {
+        std::cout << "Variable: " << varName << std::endl;
+        std::cout << "Type: std::vector<std::pair<Eigen::VectorXf, float>>" << std::endl;
+        std::cout << "Size: " << mat.size() << std::endl;
+        std::cout << "Values:\n";
+        for (const auto& p : mat) {
+            std::cout << "Vector: " << p.first.transpose() << ", Value: " << p.second << std::endl;
+        }
+    }
+}
 
-//template <typename MatrixType>
-//void printVariableDetails(const char* varName, const MatrixType& mat) {
-//    if constexpr (std::is_base_of<Eigen::MatrixBase<MatrixType>, MatrixType>::value) {
-//        std::cout << "Variable: " << varName << std::endl;
-//        std::cout << "Type: " << typeid(typename MatrixType::Scalar).name() << std::endl;
-//        std::cout << "Rows: " << mat.rows() << std::endl;
-//        std::cout << "Cols: " << mat.cols() << std::endl;
-//        std::cout << "Value:\n" << mat << std::endl;
-//    } else if constexpr (std::is_same_v<MatrixType, std::vector<Eigen::VectorXf>>) {
-//        std::cout << "Variable: " << varName << std::endl;
-//        std::cout << "Type: std::vector<Eigen::VectorXf>" << std::endl;
-//        std::cout << "Size: " << mat.size() << std::endl;
-//        std::cout << "Values:\n";
-//        for (const auto& vec : mat) {
-//            std::cout << vec.transpose() << std::endl;  // Transpose for horizontal display
-//        }
-//    } else if constexpr (std::is_same_v<MatrixType, std::vector<std::pair<Eigen::VectorXf, float>>>) {
-//        std::cout << "Variable: " << varName << std::endl;
-//        std::cout << "Type: std::vector<std::pair<Eigen::VectorXf, float>>" << std::endl;
-//        std::cout << "Size: " << mat.size() << std::endl;
-//        std::cout << "Values:\n";
-//        for (const auto& p : mat) {
-//            std::cout << "Vector: " << p.first.transpose() << ", Value: " << p.second << std::endl;
-//        }
-//    }
-//}
-//
-//// Overload for float types
-//void printVariableDetails(const char* varName, float value) {
-//    std::cout << "Variable: " << varName << std::endl;
-//    std::cout << "Type: float" << std::endl;
-//    std::cout << "Value: " << value << std::endl;
-//}
-//
-//// Overload for int types
-//void printVariableDetails(const char* varName, int value) {
-//    std::cout << "Variable: " << varName << std::endl;
-//    std::cout << "Type: int" << std::endl;
-//    std::cout << "Value: " << value << std::endl;
-//}
-//
-//#define PRINT(VAR) printVariableDetails(#VAR, VAR)
+// Overload for float types
+void printVariableDetails(const char* varName, float value) {
+    std::cout << "Variable: " << varName << std::endl;
+    std::cout << "Type: float" << std::endl;
+    std::cout << "Value: " << value << std::endl;
+}
+
+// Overload for int types
+void printVariableDetails(const char* varName, int value) {
+    std::cout << "Variable: " << varName << std::endl;
+    std::cout << "Type: int" << std::endl;
+    std::cout << "Value: " << value << std::endl;
+}
+
+#define PRINT(VAR) printVariableDetails(#VAR, VAR)
+
+void print_values(const std::vector<Obstacle>& obstacles_vector, const std::pair<std::vector<Capsule>, std::vector<Capsule>>& capsules) {
+    // Print obstacles
+    for(const auto& obstacle : obstacles_vector) {
+        std::cout << "Obstacle Position: [" << obstacle.pos[0] << ", " << obstacle.pos[1] << ", " << obstacle.pos[2] << "] Size: [" << obstacle.size[0] << ", " << obstacle.size[1] << ", " << obstacle.size[2] << "]\n";
+    }
+
+    // Print capsules from the first vector
+    for(const auto& capsule : capsules.first) {
+        std::cout << "Capsule p: [" << capsule.p[0] << ", " << capsule.p[1] << ", " << capsule.p[2] << "] u: [" << capsule.u[0] << ", " << capsule.u[1] << ", " << capsule.u[2] << "] roh: " << capsule.roh << "\n";
+    }
+
+    // Print capsules from the second vector
+    for(const auto& capsule : capsules.second) {
+        std::cout << "Capsule p: [" << capsule.p[0] << ", " << capsule.p[1] << ", " << capsule.p[2] << "] u: [" << capsule.u[0] << ", " << capsule.u[1] << ", " << capsule.u[2] << "] roh: " << capsule.roh << "\n";
+    }
+}
 
 static std::chrono::high_resolution_clock::time_point init;
 static std::chrono::high_resolution_clock::time_point generate;
@@ -241,15 +265,19 @@ extern "C" {
         // Now resample until we have a feasible solution
         std::pair<Eigen::VectorXf, float> res;
         int i = 0;
+        float dist;
         for (auto& [ind, fit] : cached_pop) {
             i++;
             res.first = ind;
             res.second = fit;
-            if (calc_dist(ind, context) > 0) {
+            dist = calc_dist(ind, context);
+            if (dist > 0) {
                 break;
             }
         }
-
+//        std::cout << "-----------------------------------------------\n";
+//        std::cout << "Resample:" << i << "\n";
+//        std::cout << "C-Dist: " << dist << "\n";
         return res;
     }
 

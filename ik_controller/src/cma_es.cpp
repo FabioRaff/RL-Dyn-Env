@@ -10,48 +10,48 @@
 
 ////Todo For debugging in python
 //
-template <typename MatrixType>
-void printVariableDetails(const char* varName, const MatrixType& mat) {
-    if constexpr (std::is_base_of<Eigen::MatrixBase<MatrixType>, MatrixType>::value) {
-        std::cout << "Variable: " << varName << std::endl;
-        std::cout << "Type: " << typeid(typename MatrixType::Scalar).name() << std::endl;
-        std::cout << "Rows: " << mat.rows() << std::endl;
-        std::cout << "Cols: " << mat.cols() << std::endl;
-        std::cout << "Value:\n" << mat << std::endl;
-    } else if constexpr (std::is_same_v<MatrixType, std::vector<Eigen::VectorXf>>) {
-        std::cout << "Variable: " << varName << std::endl;
-        std::cout << "Type: std::vector<Eigen::VectorXf>" << std::endl;
-        std::cout << "Size: " << mat.size() << std::endl;
-        std::cout << "Values:\n";
-        for (const auto& vec : mat) {
-            std::cout << vec.transpose() << std::endl;  // Transpose for horizontal display
-        }
-    } else if constexpr (std::is_same_v<MatrixType, std::vector<std::pair<Eigen::VectorXf, float>>>) {
-        std::cout << "Variable: " << varName << std::endl;
-        std::cout << "Type: std::vector<std::pair<Eigen::VectorXf, float>>" << std::endl;
-        std::cout << "Size: " << mat.size() << std::endl;
-        std::cout << "Values:\n";
-        for (const auto& p : mat) {
-            std::cout << "Vector: " << p.first.transpose() << ", Value: " << p.second << std::endl;
-        }
-    }
-}
-
-// Overload for float types
-void printVariableDetails(const char* varName, float value) {
-    std::cout << "Variable: " << varName << std::endl;
-    std::cout << "Type: float" << std::endl;
-    std::cout << "Value: " << value << std::endl;
-}
-
-// Overload for int types
-void printVariableDetails(const char* varName, int value) {
-    std::cout << "Variable: " << varName << std::endl;
-    std::cout << "Type: int" << std::endl;
-    std::cout << "Value: " << value << std::endl;
-}
-
-#define PRINT(VAR) printVariableDetails(#VAR, VAR)
+//template <typename MatrixType>
+//void printVariableDetails(const char* varName, const MatrixType& mat) {
+//    if constexpr (std::is_base_of<Eigen::MatrixBase<MatrixType>, MatrixType>::value) {
+//        std::cout << "Variable: " << varName << std::endl;
+//        std::cout << "Type: " << typeid(typename MatrixType::Scalar).name() << std::endl;
+//        std::cout << "Rows: " << mat.rows() << std::endl;
+//        std::cout << "Cols: " << mat.cols() << std::endl;
+//        std::cout << "Value:\n" << mat << std::endl;
+//    } else if constexpr (std::is_same_v<MatrixType, std::vector<Eigen::VectorXf>>) {
+//        std::cout << "Variable: " << varName << std::endl;
+//        std::cout << "Type: std::vector<Eigen::VectorXf>" << std::endl;
+//        std::cout << "Size: " << mat.size() << std::endl;
+//        std::cout << "Values:\n";
+//        for (const auto& vec : mat) {
+//            std::cout << vec.transpose() << std::endl;  // Transpose for horizontal display
+//        }
+//    } else if constexpr (std::is_same_v<MatrixType, std::vector<std::pair<Eigen::VectorXf, float>>>) {
+//        std::cout << "Variable: " << varName << std::endl;
+//        std::cout << "Type: std::vector<std::pair<Eigen::VectorXf, float>>" << std::endl;
+//        std::cout << "Size: " << mat.size() << std::endl;
+//        std::cout << "Values:\n";
+//        for (const auto& p : mat) {
+//            std::cout << "Vector: " << p.first.transpose() << ", Value: " << p.second << std::endl;
+//        }
+//    }
+//}
+//
+//// Overload for float types
+//void printVariableDetails(const char* varName, float value) {
+//    std::cout << "Variable: " << varName << std::endl;
+//    std::cout << "Type: float" << std::endl;
+//    std::cout << "Value: " << value << std::endl;
+//}
+//
+//// Overload for int types
+//void printVariableDetails(const char* varName, int value) {
+//    std::cout << "Variable: " << varName << std::endl;
+//    std::cout << "Type: int" << std::endl;
+//    std::cout << "Value: " << value << std::endl;
+//}
+//
+//#define PRINT(VAR) printVariableDetails(#VAR, VAR)
 
 
 

@@ -32,11 +32,11 @@
 
 		<!-- Table -->
 		<body pos="1.3 0.75 0.2" name="table0">
-			<geom name="table0" size="0.2 0.4 0.2" type="box" mass="2000" material="table_mat"/>
+			<geom name="table0" size="0.2 0.35 0.2" type="box" mass="2000" material="table_mat"/>
 		</body>
 
 		<!-- Workspace: Object, Target and Obstacles may only be spawned inside this area -->
-		<site name="workspace" pos='1.3 0.75 0.5' size="0.2 0.4 0.1" rgba="1 1 1 0.05" type="box"/>
+		<site name="workspace" pos='1.3 0.75 0.5' size="0.2 0.35 0.1" rgba="1 1 1 0.05" type="box"/>
 
 		<!-- Target -->
 		<site name="target0" pos="1.3 0.75 0.45" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere"/>
@@ -45,7 +45,7 @@
 		<body name="object0" pos="0.025 0.025 0.025">
 			<joint name="object0:joint" type="free" damping="0.01"/>
 			<geom name="object0" size="0.02 0.02 0.02" type="box" condim="4" material="block_mat" mass="0.01"/>
-			<site name="object0" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere"/>
+			<site name="object0" pos="0 0 0" size="0.01 0.01 0.01" rgba="0 0 0 1" type="sphere"/>
 		</body>
 
 		<!-- Obstacles -->

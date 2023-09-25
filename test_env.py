@@ -2,6 +2,7 @@ import gymnasium as gym
 import numpy as np
 from pynput import keyboard
 from envs.custom_scenarios import scenarios
+import time
 
 from envs.config import register_custom_envs
 
@@ -13,7 +14,7 @@ def test_env():
     register_custom_envs()
     control_mode = 'position'
 
-    env = gym.make('RandDynObstEnv-v1', num_obst=3, control_mode='ik_controller', n_substeps=100, scenario=scenarios["lifted_obst"])
+    env = gym.make('RandDynObstEnv-v1', num_obst=3, n_substeps=100, scenario=scenarios['lifted_obst'])
     env.reset()
 
     global ctrl
@@ -43,9 +44,9 @@ def test_env():
                     action = [0., 0., -ctrl, -grip_ctrl]
                 # gripper
                 elif key.char == 'n':
-                    action = [0., 0., 0., -0.5]
+                    action = [0., 0., 0., -1.]
                 elif key.char == 'm':
-                    action = [0., 0., 0., 0.5]
+                    action = [0., 0., 0., 1.]
             elif control_mode == 'position_rotation':
                 # invert direction
                 if key.char == 'z':
@@ -106,12 +107,15 @@ def test_env():
             pass
         env.step(action)
         env.render()
-    #
-    # for j in range(1):
-    #     env.reset()
-    #     for i in range(20):
-    #         env.step(np.random.rand(4)*2-1)
-    #         env.render()
+    # #
+    for j in range(50):
+        env.reset()
+        for i in range(1000):
+            # obs, _, _, _, info = env.step(np.random.rand(4)*2-1)
+            obs, _, _, _, info = env.step(np.zeros(4))
+            env.render()
+            time.sleep(0.01)
+            x=0
 
 
     # print( ' ------------------------------- TIME ------------------------------')
@@ -123,9 +127,9 @@ def test_env():
     # print(f'Total Iterations: {env.unwrapped.IKC.nit}')
     # print(f'Total Function Evaluations: {env.unwrapped.IKC.nfev}')
 
-    # Collect events until released
-    with keyboard.Listener(on_press=on_press) as listener:
-        listener.join()
+    # # Collect events until released
+    # with keyboard.Listener(on_press=on_press) as listener:
+    #     listener.join()
 
 
 

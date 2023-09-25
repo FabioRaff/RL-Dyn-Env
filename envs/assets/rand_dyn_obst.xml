@@ -30,12 +30,12 @@
 		</body>
 
 		<!-- Table -->
-		<body pos="1.3 0.775 0.2" name="table0">
-			<geom name="table0" size="0.2 0.45 0.2" type="box" mass="2000" material="table_mat"/>
+		<body pos="1.3 0.75 0.2" name="table0">
+			<geom name="table0" size="0.2 0.35 0.2" type="box" mass="2000" material="table_mat"/>
 		</body>
 
 		<!-- Workspace: Object, Target and Obstacles may only be spawned inside this area -->
-		<site name="workspace" pos='1.3 0.775 0.5' size="0.2 0.45 0.1" rgba="1 1 1 0.05" type="box"/>
+		<site name="workspace" pos='1.3 0.75 0.5' size="0.2 0.35 0.1" rgba="1 1 1 0.05" type="box"/>
 
 		<!-- Target -->
 		<site name="target0" pos="1.3 0.75 0.45" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere"/>
@@ -44,7 +44,7 @@
 		<body name="object0" pos="0.025 0.025 0.025">
 			<joint name="object0:joint" type="free" damping="0.01"/>
 			<geom name="object0" size="0.02 0.02 0.02" type="box" condim="4" material="block_mat" mass="0.01"/>
-			<site name="object0" pos="0 0 0" size="0.02 0.02 0.02" rgba="1 0 0 1" type="sphere"/>
+			<site name="object0" pos="0 0 0" size="0.01 0.01 0.01" rgba="0 0 0 1" type="sphere"/>
 		</body>
 
 		<!-- Obstacles -->
@@ -71,25 +71,6 @@
 		<body name="obstacle2:site" pos="0.8 0.6 0.42">
 			<site name="obstacle2" size="0.02 0.02 0.02" type="box" rgba="0 0 1 0.05"/>
 		</body>
-
-		<!-- Robot Capsules -->
-		<site name="capsule1" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<site name="capsule2" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<site name="capsule3" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<site name="capsule4" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<site name="capsule5" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<site name="capsule6" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<site name="capsule7" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<site name="capsule8" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<site name="capsule9" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<site name="capsule10" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<site name="capsule11" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<site name="capsule12" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="1 0 0 0.2"/>
-		<!-- Obstacle Capsules -->
-		<site name="capsule13" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="0 0 1 0.2"/>
-		<site name="capsule14" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="0 0 1 0.2"/>
-		<site name="capsule15" type="capsule" size="0.01 0.01" pos="0.1 0 0" rgba="0 0 1 0.2"/>
-
 
 		<light directional="true" ambient="0.2 0.2 0.2" diffuse="0.8 0.8 0.8" specular="0.3 0.3 0.3" castshadow="false" pos="0 0 4" dir="0 0 -1"/>
     </worldbody>

@@ -17,20 +17,24 @@ class NormalLearner:
 
 		# adjust difficulty based on current accuracy if no custom scenario is given
 		if args.scenario == '' and args.cur_acc >= 0.9:
+			# add obstacles
+			if self.envs.get_attr('obj_range')[0] > 0.95 and args.num_obst < 3:
+				args.num_obst += 1
 			# adjust range
 			if self.envs.get_attr('obj_range')[0] < 0.99:
 				self.envs.set_attr('obj_range', [x + 0.3 for x in self.envs.get_attr('obj_range')])
 			if self.envs.get_attr('target_range')[0] < 0.99:
 				self.envs.set_attr('target_range', [x + 0.3 for x in self.envs.get_attr('target_range')])
 
-			if self.envs.get_attr('obj_range')[0] > 0.95 and args.num_obst < 3:
-				# add obstacles
-				args.num_obst += 1
-
 		for c in range(args.cycles):
 			if args.scenario == '':
+				# # random number of obstacles for each env, many obstacles should come more often
+				n = list(range(args.num_obst + 1))
+				p = np.array([2**i for i in n])
+				p = p/p.sum()
+				self.envs.set_attr('num_obst', list(np.random.choice(n, p=p, size=args.num_envs)))
 				# random number of obstacles for each env
-				self.envs.set_attr('num_obst', list(np.random.randint(0, args.num_obst + 1, size=10)))
+				# self.envs.set_attr('num_obst', list(np.random.randint(0, args.num_obst + 1, size=args.num_envs)))
 
 			obs, _ = self.envs.reset()
 			obs = [dict(zip(obs, t)) for t in zip(*obs.values())]

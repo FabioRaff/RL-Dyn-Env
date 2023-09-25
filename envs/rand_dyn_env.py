@@ -11,6 +11,7 @@ from gymnasium_robotics.utils import mujoco_utils
 
 from envs.ik_controller import IKController
 from envs.utils import eul2quat
+from envs.custom_scenarios import scenarios as scene
 
 DEFAULT_CAMERA_CONFIG = {
     "distance": 1,
@@ -228,10 +229,6 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
         obs = self._get_obs()
 
-        # assert (
-        #         int(np.round(1.0 / self.dt)) == self.metadata["render_fps"]
-        # ), f'Expected value: {int(np.round(1.0 / self.dt))}, Actual value: {self.metadata["render_fps"]}'
-
         self.action_space = spaces.Box(-1.0, 1.0, shape=(self.n_actions,), dtype=np.float32)
         self.observation_space = spaces.Dict(
             dict(
@@ -253,7 +250,6 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
         # IK controller
         self.IKC = IKController(self.get_body_pos("link0"), self.data.qpos[:7], self.get_obstacle_info())
-        self.target_grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
 
         self.render_mode = 'human'
         self.mujoco_renderer = MujocoRenderer(
@@ -310,15 +306,15 @@ class RandDynObstEnv(gym.Env, EzPickle):
             raise ValueError("Action dimension mismatch")
 
         action = np.clip(action, -1, 1)
-
+        target_pos = []
+        q_res = []
         if self.control_mode == 'ik_controller':
             ##########################
             # get obstacle information
             obstacles = self.get_obstacle_info()
             # compute target position
             grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip").copy()
-            target_pos = (grip_pos + np.clip(action[:3], -1, 1) * 0.05).copy()
-            self.target_grip_pos += action[:3] * 0.05
+            target_pos = (grip_pos + np.clip(action[:3], -1, 1) * 0.04).copy()
             # to avoid hitting the table, we clip the target in z-direciton
             table_edge = (self.get_body_pos('table0') + self.get_geom_size('table0'))[2] + 0.025
             if target_pos[2] < table_edge:
@@ -327,11 +323,6 @@ class RandDynObstEnv(gym.Env, EzPickle):
             self.set_site_pos("target_pos", target_pos)
 
             qpos = self.data.qpos[:7].copy()
-
-            # self._set_action(action)
-            # self._mujoco.mj_step(self.model, self.data, nstep=1000)
-            mocap_sol = self.data.qpos[:7]
-            # 1.2125068458259467,0.7575255189080952,0.6111255208249269
 
             # calculate forward kinematics and capsule positions for visualization
             q_res, robot_capsules, obst_capsules = self.IKC.solve(qpos, obstacles, target_pos)
@@ -346,7 +337,6 @@ class RandDynObstEnv(gym.Env, EzPickle):
                 self.set_site_size("capsule" + str(i + 1), size)
                 self.set_site_quat("capsule" + str(i + 1), quat)
 
-            angle_error = 0.001 * np.linalg.norm(qpos - q_res)
             ######################
             self._set_action(np.append(q_res, action[3]))
         else:
@@ -361,12 +351,8 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
         obs = self._get_obs()
 
-        # t_real_pos = self.data.qpos[:7]
-        # t_calc_pos = [fk[:3,3] for fk in fk_list]
-        # t1 = self.data.qpos[16:19]
-        # t2 = self.obstacles[0]['pos'][:3]
-
         reward = self.compute_reward(obs["achieved_goal"], self.goal, obs['object_gripper_dist'], obs['collision'])
+        self.col_sum += obs['collision']
         self.reward_sum += reward
 
         terminated = False
@@ -411,14 +397,18 @@ class RandDynObstEnv(gym.Env, EzPickle):
                 rot_ctrl = eul2quat(rot_ctrl)
 
             pos_ctrl *= 0.05  # limit maximum change in position
+            gripper_ctrl *= 50  # scale control action
             # normalize gripper ctrl
-            gripper_ctrl = [self.actuation_center[-1] + gripper_ctrl * self.actuation_range[-1]]
-            action = np.concatenate([pos_ctrl, rot_ctrl, gripper_ctrl])
+            ctrl_range = self.model.actuator_ctrlrange
+            ctrl =  np.clip(self.data.ctrl[0] + gripper_ctrl, ctrl_range[:, 0], ctrl_range[:, 1])
+            action = np.concatenate([pos_ctrl, rot_ctrl, ctrl])
             # Apply action to simulation.
             self._utils.mocap_set_action(self.model, self.data, action)
-            self.data.ctrl = gripper_ctrl
+            self.data.ctrl = ctrl
         else:
-            action[-1] = self.actuation_center[-1] + action[-1] * self.actuation_range[-1]
+            action[-1] *= 50  # scale control action
+            ctrl_range = self.model.actuator_ctrlrange
+            action[-1] = np.clip(self.data.ctrl[-1] + action[-1], ctrl_range[-1, 0], ctrl_range[-1, 1])
             self.data.ctrl = action
 
     def _move_obstacles(self):
@@ -445,12 +435,14 @@ class RandDynObstEnv(gym.Env, EzPickle):
                 continue
 
             for obst_id in self.obstacle_ids:
-                # skip table contacts
+                # skip table contacts and object
                 table_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, 'table0')
                 panda_table_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, 'panda_table')
-                if contact.geom1 not in [table_id, panda_table_id] and contact.geom2 not in [table_id, panda_table_id]:
+                object_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, 'object0')
+                skip = [table_id, panda_table_id, object_id]
+                if contact.geom1 not in skip and contact.geom2 not in skip:
                     if (contact.geom1 == obst_id) or (contact.geom2 == obst_id):
-                        # print('COL!')
+                        # print("COL!")
                         return 1
         return 0
 
@@ -461,17 +453,18 @@ class RandDynObstEnv(gym.Env, EzPickle):
     def _get_obs(self):
         # robot
         robot_qpos, robot_qvel = self._utils.robot_get_obs(self.model, self.data, self._model_names.joint_names)
+        gripper_placement = [robot_qpos[-1]]
 
         # gripper
         grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
-        print(grip_pos)
         grip_velp = self._utils.get_site_xvelp(self.model, self.data, "robot0:grip")
 
         # object
         object_pos = self._utils.get_site_xpos(self.model, self.data, "object0")
         object_velp = self._utils.get_site_xvelp(self.model, self.data, "object0")
+        object_size = self.get_geom_size("object0")
 
-        # object-gripper
+        # object-gripper (we only need this for the reward)
         object_rel_pos = object_pos - grip_pos
         object_gripper_dist = np.linalg.norm(object_rel_pos.ravel())
 
@@ -487,85 +480,32 @@ class RandDynObstEnv(gym.Env, EzPickle):
             self.np_random.shuffle(obstacles)
         obst_states = np.concatenate(obstacles)
 
-        # goal
+        # achieved goal, essentially the object position
         achieved_goal = np.squeeze(object_pos.copy())
 
         # collisions
-        self.col_sum += self._check_collisions()
+        collision = self._check_collisions()
 
         obs = np.concatenate(
             [
-                robot_qpos,
-                robot_qvel,
+                # robot_qpos,
+                # robot_qvel,
+                gripper_placement,
                 grip_pos,
                 grip_velp,
                 object_pos,
+                object_size,
                 object_velp,
                 obst_states
             ]
         )
-
-        # dt = self.n_substeps * self.model.opt.timestep
-        # # robot
-        # robot_qpos, robot_qvel = self._utils.robot_get_obs(self.model, self.data, self._model_names.joint_names)
-        #
-        # # gripper
-        # grip_pos = self._utils.get_site_xpos(self.model, self.data, "robot0:grip")
-        # grip_velp = (self._utils.get_site_xvelp(self.model, self.data, "robot0:grip") * dt)
-        # gripper_vel = (robot_qvel[-2:] * dt)
-        # gripper_state = robot_qpos[-2:]
-        #
-        # # object
-        # object_pos = self._utils.get_site_xpos(self.model, self.data, "object0")
-        # object_rot = rotations.mat2euler(self._utils.get_site_xmat(self.model, self.data, "object0"))
-        # object_velp = (self._utils.get_site_xvelp(self.model, self.data, "object0") * dt)
-        # object_velp -= grip_velp
-        # object_velr = (self._utils.get_site_xvelr(self.model, self.data, "object0") * dt)
-        #
-        # # object-gripper
-        # object_rel_pos = object_pos - grip_pos
-        # object_gripper_dist = np.linalg.norm(object_rel_pos.ravel())
-        #
-        # # obstacles
-        # obstacles = []
-        # for n in range(self.total_obst):
-        #     pos = self._utils.get_joint_qpos(self.model, self.data, f'obstacle{n}' + ':joint')[:3]
-        #     vel = self.custom_get_joint_qvel(self.model, self.data, f'obstacle{n}' + ':joint')[:3]
-        #     size = self.get_geom_size(f'obstacle{n}')
-        #     obstacles.append(np.concatenate([pos, vel, size]))
-        # if not self.scenario:
-        #     # randomize order to avoid overfitting to the first obstacle
-        #     self.np_random.shuffle(obstacles)
-        # obst_states = np.concatenate(obstacles)
-        #
-        # # goal
-        # achieved_goal = np.squeeze(object_pos.copy())
-        #
-        # # collisions
-        # self.col_sum += self._check_collisions()
-        # # collision = self._check_collisions()
-        #
-        # obs = np.concatenate(
-        #     [
-        #         grip_pos,
-        #         object_pos.ravel(),
-        #         object_rel_pos.ravel(),
-        #         gripper_state,
-        #         object_rot.ravel(),
-        #         object_velp.ravel(),
-        #         object_velr.ravel(),
-        #         grip_velp,
-        #         gripper_vel,
-        #         obst_states
-        #     ]
-        # )
 
         return {
             "observation": obs.copy(),
             "achieved_goal": achieved_goal.copy(),
             "desired_goal": self.goal.copy(),
             "object_gripper_dist": object_gripper_dist.copy(),
-            "collision": self.col_sum,
+            "collision": collision,
         }
 
     def compute_reward(self, achieved_goal, desired_goal, object_gripper_dist, collision):
@@ -629,88 +569,107 @@ class RandDynObstEnv(gym.Env, EzPickle):
 
         # Initialize custom env setup if given, else randomize
         if self.scenario:
-            # Object
-            obj_init_space = self.scenario['obj_init_space']
-            object_qpos = self._utils.get_joint_qpos(self.model, self.data, "object0:joint")
-            object_qpos[:2] = self.np_random.uniform(obj_init_space['min'], obj_init_space['max'], size=2)
-            self._utils.set_joint_qpos(self.model, self.data, "object0:joint", object_qpos)
-
-            # Target
-            target_init_space = self.scenario['target_init_space']
-            target = self.np_random.uniform(target_init_space['min'], target_init_space['max'], size=3)
-            self.goal = target.copy()
-
-            # Obstacles
-            for obst in range(3):
-                obstacle = self.scenario[f'obstacle{obst}']
-
-                qpos = np.concatenate([obstacle['pos'], [1, 0, 0, 0]])
-                # randomize direction and vel
-                d = obstacle['dir']
-                vel = np.zeros(6)
-                vel[d] = self.np_random.uniform(obstacle['vel']['min'], obstacle['vel']['max'])
-
-                self._utils.set_joint_qpos(self.model, self.data, f"obstacle{obst}:joint", qpos)
-                self._utils.set_joint_qvel(self.model, self.data, f"obstacle{obst}:joint", vel)
-                self.set_geom_size(f'obstacle{obst}', obstacle['size'])
-                self.set_body_pos(f'obstacle{obst}:site', obstacle['site_pos'])
-                self.set_site_size(f'obstacle{obst}', obstacle['site_size'])
-                self.obstacles.append({
-                    'name': f'obstacle{obst}',
-                    'pos': qpos,
-                    'vel': vel,
-                    'size': obstacle['size'],
-                    'direction': d,
-                    'l_bound': np.subtract(obstacle['site_pos'], obstacle['site_size']),
-                    'r_bound': np.add(obstacle['site_pos'], obstacle['site_size'])
-                })
+            self._init_scenario(self.scenario)
         else:
-            # Get workspace boundaries
-            ws_pos = self.get_site_pos('workspace')
-            ws_size = self.get_site_size('workspace')
-            min_pos = ws_pos - ws_size
-            max_pos = ws_pos + ws_size
-
-            paths = []
-            # Randomize start position of object.i
-            obj_margin = 0.05  # margin from table edge
-            object_qpos = self._utils.get_joint_qpos(self.model, self.data, "object0:joint")
-            object_qpos[:2] = self.np_random.uniform(
-                ws_pos - self.obj_range * (ws_size - obj_margin),
-                ws_pos + self.obj_range * (ws_size - obj_margin),
-                size=3
-            )[:2]
-            self._utils.set_joint_qpos(self.model, self.data, "object0:joint", object_qpos)
-            # ensure that the robot has space to grab the object
-            obj_safe_size = self.get_geom_size('object0').copy()
-            obj_safe_size += [0.1, 0.12, 0.2]
-            paths.append({'pos': object_qpos[:3], 'size': obj_safe_size})
-
-            # Sample goal
-            goal = np.empty(3)
-            goal[:2] = self.np_random.uniform(
-                ws_pos - self.target_range * ws_size,
-                ws_pos + self.target_range * ws_size,
-                size=3
-            )[:2]
-            # for the target height we use sqrt, so that the robot has to learn to pick up quicker
-            goal[2] = object_qpos[2] + 0.02 + self.np_random.uniform(0, np.sqrt(self.target_range) * ws_size[2] * 2,
-                                                                     size=1)
-            self.goal = goal.copy()
-            # ensure that the robot has space to reach goal
-            target_safe_size = self.get_geom_size('target0').copy()
-            target_safe_size += [0.1, 0.12, 0.2]
-            paths.append({'pos': goal, 'size': target_safe_size})
-
-            self._randomize_obstacles(max_pos, min_pos, paths)
+            # occasionally mix in one of the custom scenarios once max obst number is reached
+            # if self.num_obst == self.total_obst and self.np_random.random() < 0.2:
+            #     self._init_scenario(scene[self.np_random.choice(list(scene.keys()))])
+            # else:
+            self._init_random()
 
         self._mujoco.mj_forward(self.model, self.data)
         return True
 
+    def _init_scenario(self, scenario):
+        # Object
+        obj_init_space = scenario['obj_init_space']
+        object_qpos = self._utils.get_joint_qpos(self.model, self.data, "object0:joint")
+        object_qpos[:2] = self.np_random.uniform(obj_init_space['min'], obj_init_space['max'], size=2)
+        self._utils.set_joint_qpos(self.model, self.data, "object0:joint", object_qpos)
+
+        # Target
+        target_init_space = scenario['target_init_space']
+        target = self.np_random.uniform(target_init_space['min'], target_init_space['max'], size=3)
+        self.goal = target.copy()
+
+        # Obstacles
+        for obst in range(3):
+            obstacle = scenario[f'obstacle{obst}']
+
+            # randomize starting position in moving direction
+            pos = obstacle['pos'].copy()
+            d = obstacle['dir']
+            if obstacle['site_size'][d] - obstacle['size'][d] > 0.025:
+                pos[d] = self.np_random.uniform(
+                    obstacle['pos'][d] - obstacle['site_size'][d] + obstacle['size'][d] + 0.025,
+                    obstacle['pos'][d] + obstacle['site_size'][d] - obstacle['size'][d] - 0.025
+                )
+
+            qpos = np.concatenate([pos, [1, 0, 0, 0]])
+            # randomize direction and vel
+            d = obstacle['dir']
+            vel = np.zeros(6)
+            vel[d] = self.np_random.uniform(obstacle['vel']['min'], obstacle['vel']['max'])
+
+            self._utils.set_joint_qpos(self.model, self.data, f"obstacle{obst}:joint", qpos)
+            self._utils.set_joint_qvel(self.model, self.data, f"obstacle{obst}:joint", vel)
+            self.set_geom_size(f'obstacle{obst}', obstacle['size'])
+            self.set_body_pos(f'obstacle{obst}:site', obstacle['site_pos'])
+            self.set_site_size(f'obstacle{obst}', obstacle['site_size'])
+            self.obstacles.append({
+                'name': f'obstacle{obst}',
+                'pos': qpos,
+                'vel': vel,
+                'size': obstacle['size'],
+                'direction': d,
+                'l_bound': np.subtract(obstacle['site_pos'], obstacle['site_size']),
+                'r_bound': np.add(obstacle['site_pos'], obstacle['site_size'])
+            })
+
+    def _init_random(self):
+        # Get workspace boundaries
+        ws_pos = self.get_site_pos('workspace')
+        ws_size = self.get_site_size('workspace')
+        min_pos = ws_pos - ws_size
+        max_pos = ws_pos + ws_size
+
+        paths = []
+        # Randomize start position and size of object
+        obj_margin = 0.05  # margin from table edge
+        object_qpos = self._utils.get_joint_qpos(self.model, self.data, "object0:joint")
+        object_qpos[:2] = self.np_random.uniform(
+            ws_pos - self.obj_range * (ws_size - obj_margin),
+            ws_pos + self.obj_range * (ws_size - obj_margin),
+            size=3
+        )[:2]
+        self._utils.set_joint_qpos(self.model, self.data, "object0:joint", object_qpos)
+        self.set_geom_size("object0", np.random.uniform(0.015, 0.025, size=3))
+        # ensure that the robot has space to grab the object
+        obj_safe_size = self.get_geom_size('object0').copy()
+        obj_safe_size += [0.1, 0.12, 0.2]
+        paths.append({'pos': object_qpos[:3], 'size': obj_safe_size})
+
+        # Sample goal
+        goal = np.empty(3)
+        goal[:2] = self.np_random.uniform(
+            ws_pos - self.target_range * ws_size,
+            ws_pos + self.target_range * ws_size,
+            size=3
+        )[:2]
+        # for the target height we use sqrt, so that the robot has to learn to pick up quicker
+        goal[2] = object_qpos[2] + 0.02 + self.np_random.uniform(0, np.sqrt(self.target_range) * ws_size[2] * 2, size=1)
+        self.goal = goal.copy()
+        # ensure that the robot has space to reach goal
+        target_safe_size = self.get_geom_size('target0').copy()
+        target_safe_size += [0.1, 0.12, 0.2]
+        paths.append({'pos': goal, 'size': target_safe_size})
+
+        self._randomize_obstacles(max_pos, min_pos, paths)
+
     def _randomize_obstacles(self, max_pos, min_pos, paths):
         # obstacle size range
         min_size = np.array([0.01, 0.01, 0.01])
-        max_size = np.array([0.03, 0.03, 0.03])
+        max_size = np.array([0.06, 0.06, 0.06])
         for obst in range(self.num_obst):
             pos, size, vel = None, None, None
             site_pos, site_size, d = None, None, None

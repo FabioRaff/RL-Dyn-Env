@@ -33,7 +33,6 @@
           <geom material="white" mesh="link2" class="visual"/>
           <geom mesh="link2_c" class="collision"/>
           <body name="link3" pos="0 -0.316 0" quat="1 1 0 0">
-            <site name="link"/>
             <joint name="robot:joint3"/>
             <inertial mass="3.228604" pos="2.7518e-2 3.9252e-2 -6.6502e-2"
                 fullinertia="3.7242e-2 3.6155e-2 1.083e-2 -4.761e-3 -1.1396e-2 -1.2805e-2"/>

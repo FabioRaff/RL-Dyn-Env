@@ -56,8 +56,8 @@ def get_args():
     parser.add_argument('--critic_batch_norm', help='apply batch normalization after each hidden layer for critic', type=np.float32, default=[False]*3)
 
     # Rewards
-    parser.add_argument('--obj_lost_reward', help='additional reward for loosing object from gripper', type=np.float32, default=-0.5)
-    parser.add_argument('--collision_reward', help='additional reward for collisions', type=np.float32, default=-0.1)
+    parser.add_argument('--obj_lost_reward', help='additional reward for loosing object from gripper', type=np.float32, default=-0.3)
+    parser.add_argument('--collision_reward', help='additional reward for collisions', type=np.float32, default=-0.5)
 
     parser.add_argument('--clip_return', help='whether to clip return value', type=str2bool, default=True)
     parser.add_argument('--reward_min', help='min factor for clip_return', type=np.float32, default=-1.)
@@ -69,7 +69,7 @@ def get_args():
                         default=0.2)
 
     # Replay Buffer
-    parser.add_argument('--buffer_size', help='number of episodes in replay buffer', type=np.int32, default=5000)
+    parser.add_argument('--buffer_size', help='number of episodes in replay buffer', type=np.int32, default=20000)
     parser.add_argument('--buffer_type', help='type of replay buffer / whether to use Energy-Based Prioritization',
                         type=str, default='energy', choices=['normal', 'energy'])
 
@@ -125,7 +125,7 @@ def experiment_setup(args):
 
     # load model weights if path is given
     if args.model_path != '':
-        agent.load(os.path.join(args.model_path, "saved_policy-{}".format(args.play_epoch)))
+        agent.load(os.path.join(args.model_path, "model/saved_policy-{}".format(args.play_epoch)))
 
     args.logger.info('*** agent initialization complete ***')
 

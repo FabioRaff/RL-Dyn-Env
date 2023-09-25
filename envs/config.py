@@ -10,13 +10,13 @@ def register_custom_envs():
     gym.envs.register(
         id='RandDynObstEnv-v1',
         entry_point='envs:RandDynObstEnv',
-        max_episode_steps=100,
+        max_episode_steps=500,
         kwargs={'render_mode': 'human'}
     )
     gym.envs.register(
         id='Sim2RealEnv-v1',
         entry_point='envs:Sim2RealEnv',
-        max_episode_steps=100,
+        max_episode_steps=500,
         kwargs={'render_mode': 'human'}
     )
 

@@ -8,17 +8,19 @@ import time
 
 
 class Player:
-    def __init__(self, args):
+    def __init__(self, args, rollouts):
         # initialize environment
         self.args = args
 
         self.info = []
-        self.test_rollouts = 20
+        self.rollouts = rollouts
 
         self.agent = create_agent(args)
-        self.agent.load(os.path.join(args.model_path, "saved_policy-{}".format(args.play_epoch)))
+        self.agent.load(os.path.join(args.model_path, "model/saved_policy-{}".format(args.play_epoch)))
 
-    def play(self):
+    def play(self, scene=''):
+        if scene != '':
+            self.args.scenario = scene
         # play policy on env
         env = make_env(self.args)
         if self.args.scenario:
@@ -32,28 +34,45 @@ class Player:
         col_sum = 0
         seed = 42
 
-        for i in range(self.test_rollouts):
-
+        control_times = []
+        res = {}
+        for i in range(self.rollouts):
+            print(seed + i)
             obs, _ = env.reset(seed=seed + i)
-            print('Seed: ', seed + i)
 
-            for timestep in range(args.timesteps):
+            for timestep in range(self.args.timesteps):
+                st = time.perf_counter()
+                # get rl action
                 action = self.agent.step(obs)
+                t = time.perf_counter() - st
+                # do step in environment
                 obs, _, _, _, info = env.step(action)
 
-                env.render()
-                time.sleep(0.05)
-                if info['Success']:
-                    acc_sum += 1
+                if self.args.control_mode == 'ik_controller':
+                    t += env.unwrapped.IKC.control_time
+                # the startup of the agent always takes a bit longer, so we don't measure the first step
+                if timestep > 0:
+                    control_times.append(t)
+
+                if self.args.render:
+                    env.render()
+
+                if info['Success'] or timestep == self.args.timesteps-1:
+                    acc_sum += info['Success']
                     col_sum += info['Collisions']
                     break
-        print('AccSum: ', acc_sum)
-        print('Collisions: ', col_sum)
+
+        res['success_rate'] = acc_sum / self.rollouts
+        res['avg_collisions'] = col_sum / self.rollouts
+        res['mean_time'] = np.mean(control_times)
+        res['max_time'] = np.max(control_times)
+
+        return res
 
 
 if __name__ == "__main__":
     register_custom_envs()
     args = get_args()
 
-    player = Player(args)
-    player.play()
+    player = Player(args, 30)
+    print(player.play())
