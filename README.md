@@ -1,5 +1,8 @@
 # RL-Dyn-Env
 
+Trained on Ubuntu 20.04
+Python Version: 3.7
+
 train robot with random generated obstacles:
 
 `train.py`
