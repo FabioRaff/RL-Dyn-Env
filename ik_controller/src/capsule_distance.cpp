@@ -233,20 +233,20 @@ extern "C" {
         robot_capsules.push_back({
             (fk_list[7] * Eigen::Vector4f(0, 0, -0.04, 1)).head<3>(),
             (fk_list[7] * Eigen::Vector4f(0, 0, 0.175, 1)).head<3>(),
-            0.065f
+            0.06f
         });
 
         // Hand 2 (7. Frame)
         robot_capsules.push_back({
             (fk_list[7] * Eigen::Vector4f(0, 0.061, 0.13, 1)).head<3>(),
             (fk_list[7] * Eigen::Vector4f(0, -0.061, 0.13, 1)).head<3>(),
-            0.065f
+            0.06f
         });
         // Hand 3 (7. Frame)
         robot_capsules.push_back({
             (fk_list[7] * Eigen::Vector4f(0.03, 0.06, 0.085, 1)).head<3>(),
             (fk_list[7] * Eigen::Vector4f(0.06, 0.03, 0.085, 1)).head<3>(),
-            0.035f
+            0.03f
         });
 
         // Obstacle capsules
@@ -266,7 +266,7 @@ extern "C" {
             obst_capsules.push_back({
                 p,
                 u,
-                float(std::sqrt(std::pow(dims_sorted[idx[0]], 2) + std::pow(dims_sorted[idx[1]], 2)) + 0.01f)
+                float(std::sqrt(std::pow(dims_sorted[idx[0]], 2) + std::pow(dims_sorted[idx[1]], 2)))
             });
         }
         return {robot_capsules, obst_capsules};

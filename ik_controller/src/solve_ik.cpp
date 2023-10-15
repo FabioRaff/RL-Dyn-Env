@@ -163,6 +163,7 @@ extern "C" {
     } IKContext;
 
     float obj_fun(const Eigen::VectorXf& q, const IKContext& context);
+    float obj_fun_p(const Eigen::VectorXf& q, const IKContext& context);
     float calc_dist(Eigen::VectorXf& q, IKContext& context);
     std::pair<Eigen::VectorXf , float> cma_es(IKContext context);
 
@@ -278,6 +279,7 @@ extern "C" {
 //        std::cout << "-----------------------------------------------\n";
 //        std::cout << "Resample:" << i << "\n";
 //        std::cout << "C-Dist: " << dist << "\n";
+        float test = obj_fun_p(res.first, context);
         return res;
     }
 
@@ -303,6 +305,28 @@ extern "C" {
         float orientation_error = ((current_rot.transpose() * context.target_rot).trace()-1.0f) * 0.5f;
         orientation_error = acosf(std::max(-1.0f, std::min(1.0f, orientation_error)));
         float angle_error = (q - context.current_q).norm();
+
+        float error = context.alpha * pos_error + context.beta * orientation_error + context.gamma * angle_error;
+        return error;
+    }
+
+    float obj_fun_p(const Eigen::VectorXf& q, const IKContext& context) {
+        std::vector<Eigen::Matrix4f> fk_list = forward_kinematics(context.robot_base, q);
+
+        Eigen::Vector3f current_pos = fk_list.back().block<3,1>(0,3);
+        Eigen::Matrix3f current_rot = fk_list.back().block<3,3>(0,0);
+
+        float pos_error = (current_pos - context.target_pos).norm();
+        float orientation_error = ((current_rot.transpose() * context.target_rot).trace()-1.0f) * 0.5f;
+        orientation_error = acosf(std::max(-1.0f, std::min(1.0f, orientation_error)));
+        float angle_error = (q - context.current_q).norm();
+
+//        PRINT(current_pos);
+//        PRINT(current_rot);
+//
+//        std::cout << "Pos: " << pos_error << std::endl;
+//        std::cout << "Orient: " << orientation_error << std::endl;
+//        std::cout << "Angle: " << angle_error << std::endl;
 
         float error = context.alpha * pos_error + context.beta * orientation_error + context.gamma * angle_error;
         return error;
