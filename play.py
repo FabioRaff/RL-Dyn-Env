@@ -62,10 +62,13 @@ class Player:
                     col_sum += info['Collisions']
                     break
 
+
+
         res['success_rate'] = acc_sum / self.rollouts
         res['avg_collisions'] = col_sum / self.rollouts
         res['mean_time'] = np.mean(control_times)
         res['max_time'] = np.max(control_times)
+        res['std_time'] = np.std(control_times)
 
         return res
 
@@ -74,5 +77,5 @@ if __name__ == "__main__":
     register_custom_envs()
     args = get_args()
 
-    player = Player(args, 30)
+    player = Player(args, 100)
     print(player.play())

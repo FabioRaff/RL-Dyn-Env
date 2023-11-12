@@ -8,8 +8,10 @@ def plot_training(model_path, epoch):
     df = pd.read_csv(os.path.join(model_path, 'progress.csv'))
 
     df['Epoch'] = df['Epoch'].str.split('/').str[0].astype(int)
-    if isinstance(epoch, int):
-        df = df[df['Epoch'] <= epoch]
+    try:
+        df = df[df['Epoch'] <= int(epoch)]
+    except Exception as e:
+        pass
     df['Total Time'] = df['TimeCost(sec)'].cumsum() / 60
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(20, 10))

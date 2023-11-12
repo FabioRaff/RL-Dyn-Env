@@ -8,7 +8,6 @@ from play import Player
 
 def evaluate(args):
     # plot training procedure
-
     plot_training(args.model_path, args.play_epoch)
 
     # init player
